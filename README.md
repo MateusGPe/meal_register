@@ -24,13 +24,31 @@ Esta aplicação fornece uma interface gráfica de usuário para registrar aluno
 2.  Install Poetry following the instructions on the official Poetry website: [https://python-poetry.org/docs/#installation](https://python-poetry.org/docs/#installation) / Instale o Poetry seguindo as instruções no site oficial do Poetry: [https://python-poetry.org/docs/#installation](https://python-poetry.org/docs/#installation)
 3.  Clone the repository (if applicable). / Clone o repositório (se aplicável).
 4.  Navigate to the project directory in your terminal. / Navegue até o diretório do projeto no seu terminal.
-5.  Install the project dependencies using Poetry: / Instale as dependências do projeto usando o Poetry:
+5.  Activate the Poetry shell within the project directory: / Ative o shell do Poetry dentro do diretório do projeto:
 
+    **PowerShell:**
+    ```powershell
+    Invoke-Expression (poetry env activate)
+    ```
+
+    **Bash/Zsh/Csh:**
+    ```bash
+    eval $(poetry env activate)
+    ```
+
+6.  Install the project dependencies using Poetry: / Instale as dependências do projeto usando o Poetry:
+
+    **PowerShell:**
+    ```powershell
+    poetry install
+    ```
+
+    **Bash/Zsh/Csh:**
     ```bash
     poetry install
     ```
 
-6.  Set up your Google Sheets API credentials. Follow the instructions in the `registro/control/google_creds.py` (implicitly referenced) to create a service account and download the credentials JSON file. Place this file in the appropriate location or configure the path as needed. / Configure suas credenciais da API do Google Sheets. Siga as instruções em `registro/control/google_creds.py` (referenciado implicitamente) para criar uma conta de serviço e baixar o arquivo JSON de credenciais. Coloque este arquivo no local apropriado ou configure o caminho conforme necessário.
+7.  Set up your Google Sheets API credentials. Follow the instructions in the `registro/control/google_creds.py` (implicitly referenced) to create a service account and download the credentials JSON file. Place this file in the appropriate location or configure the path as needed. / Configure suas credenciais da API do Google Sheets. Siga as instruções em `registro/control/google_creds.py` (referenciado implicitamente) para criar uma conta de serviço e baixar o arquivo JSON de credenciais. Coloque este arquivo no local apropriado ou configure o caminho conforme necessário.
 
 ## Configuration / Configuração
 
@@ -50,14 +68,15 @@ Certifique-se de que esses arquivos existam no diretório `./config` ou ajuste o
 
 ## Usage / Utilização
 
-1.  Activate the Poetry shell within the project directory: / Ative o shell do Poetry dentro do diretório do projeto:
-
-    ```bash
-    poetry shell
-    ```
-
+1.  Activate the Poetry shell within the project directory (see Installation step 5). / Ative o shell do Poetry dentro do diretório do projeto (veja o passo 5 em Instalação).
 2.  Run the main application script using the `registrar` command defined in `pyproject.toml`: / Execute o script principal da aplicação usando o comando `registrar` definido em `pyproject.toml`:
 
+    **PowerShell:**
+    ```powershell
+    registrar.exe
+    ```
+
+    **Bash/Zsh/Csh:**
     ```bash
     registrar
     ```
