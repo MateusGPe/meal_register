@@ -1,0 +1,260 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
+
+"""
+Provides a dialog for creating and managing meal serving sessions,
+including selecting meal type, time, date, and classes.
+"""
+
+import datetime as dt
+import tkinter as tk
+from datetime import datetime
+from tkinter import messagebox
+from typing import List
+
+import ttkbootstrap as ttk
+
+from registro.control.session_manage import ANYTHING, INTEGRATE_CLASSES
+from registro.control.sync_thread import SyncReserves
+from registro.control.utils import SESSION, capitalize, load_json, save_json
+
+
+def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]],
+                                                ttk.Labelframe]:
+    """
+    Creates a section with checkbuttons for selecting classes.
+
+    Args:
+        master (tk.Widget): The parent widget for this section.
+
+    Returns:
+        tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]], ttk.Labelframe]:
+            A tuple containing a list of tuples (class name, BooleanVar, Checkbutton)
+            and the Labelframe containing the checkbuttons.
+    """
+    rb_group = ttk.Labelframe(master, text="Turmas", padding=6)
+    rb_group.columnconfigure(tuple(range(3)), weight=1)
+    rb_group.rowconfigure(tuple(range(int((len(ANYTHING) + 2) / 3))), weight=1)
+    chk = []
+    for i, t in enumerate(ANYTHING):
+        without_reserve = t != 'SEM RESERVA'
+        check_var = tk.BooleanVar(value=not without_reserve)
+        check_btn = ttk.Checkbutton(
+            rb_group, text=t, variable=check_var,
+            bootstyle="round-toggle" if without_reserve else 'square-toggle')
+        check_btn.grid(column=i % 3, row=int(i / 3),
+                       stick="news", padx=10, pady=5)
+        check_btn.invoke()
+        chk.append((t, check_var, check_btn))
+    return (chk, rb_group)
+
+
+class SessionDialog(tk.Toplevel):
+    """A dialog window for creating a new meal serving session."""
+
+    def __init__(self, title: str, callback, parent_: tk.Tk):
+        """
+        Initializes the SessionDialog.
+
+        Args:
+            title (str): The title of the dialog window.
+            callback (callable): The function to call when the dialog is closed.
+            parent_ (tk.Tk): The parent tkinter window.
+        """
+        super().__init__()
+        self.title(title)
+        self._callback = callback
+        self.__parent = parent_
+
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.create_section_secao().pack(fill="both", padx=10, pady=10, expand=True)
+
+        (self._classes, class_widget) = classes_section(self)
+        class_widget.pack(padx=10, pady=10, expand=False)
+
+        self.create_section_buttons().pack(fill="both", padx=10, pady=10, expand=True)
+
+    def on_closing(self):
+        """Handles the event when the dialog window is closed."""
+        try:
+            self._callback(None)
+            self.destroy()
+        except Exception:  # pylint: disable=broad-except
+            pass
+
+    def on_clear(self):
+        """Clears the selection of all class checkbuttons."""
+        for _, cbtn, _ in self._classes:
+            cbtn.set(False)
+
+    def on_integral(self):
+        """Selects the class checkbuttons corresponding to integrated classes."""
+        for text, cbtn, _ in self._classes:
+            cbtn.set(text in INTEGRATE_CLASSES)
+
+    def on_others(self):
+        """Selects the class checkbuttons for classes not in INTEGRATE_CLASSES."""
+        for text, cbtn, _ in self._classes:
+            cbtn.set(text not in INTEGRATE_CLASSES)
+
+    def on_invert(self):
+        """Inverts the selection state of all class checkbuttons."""
+        for _, cbtn, _ in self._classes:
+            cbtn.set(not cbtn.get())
+
+    def on_okay(self):
+        """Handles the OK button click, collects session data, and calls the callback."""
+        classes_list: List[str] = [text for text,
+                                   cbtn, _ in self._classes if cbtn.get()]
+        snack = self._snack.get()
+
+        if snack not in self._lanche_set:
+            self._lanche_set.add(capitalize(snack))
+            save_json('./config/lanches.json', list(self._lanche_set))
+
+        result: SESSION = {
+            "refeição": self._meal.get(),
+            "lanche": self._snack.get(),
+            "período": self._period.get(),
+            "data": self._date_entry.entry.get(),
+            "hora": self._time_entry.get(),
+            "turmas": classes_list,
+        }
+        if self._callback(result):
+            self.grab_release()
+            self.destroy()
+        else:
+            self.__parent.focus_force()
+            messagebox.showinfo(
+                message='Nenhuma reserva foi feita.\nTente fazer o download.', title='Registro')
+
+    def on_select_meal(self, *_):
+        """Enables or disables the snack combobox based on the selected meal."""
+        if self._meal.get() == "Almoço":
+            self._snack.config(state='disabled')
+        else:
+            self._snack.config(state='normal')
+
+    def create_section_secao(self) -> ttk.Labelframe:
+        """Creates the section for setting session details like time, meal, and period."""
+        session_group = ttk.Labelframe(self, text="Seção", padding=10)
+
+        session_group.columnconfigure(0, weight=0)
+        session_group.columnconfigure(1, weight=1)
+        session_group.columnconfigure(2, weight=0)
+        session_group.rowconfigure((0, 1, 2, 3), weight=1)
+
+        label = ttk.Label(master=session_group, text="Horario")
+        label.grid(row=0, column=0, sticky="news", padx=3, pady=3)
+
+        label = ttk.Label(master=session_group, text="Refeição")
+        label.grid(row=1, column=0, sticky="news", padx=3, pady=3)
+
+        label = ttk.Label(master=session_group, text="Lanche")
+        label.grid(row=2, column=0, sticky="news", padx=3, pady=3)
+
+        label = ttk.Label(master=session_group, text="Período")
+        label.grid(row=3, column=0, sticky="news", padx=3, pady=3)
+
+        self._time_entry = ttk.Entry(session_group)
+        self._time_entry.insert(0, datetime.now().strftime("%H:%M"))
+        self._time_entry.grid(row=0, column=1, sticky="news", padx=3, pady=3)
+
+        self._date_entry = ttk.DateEntry(session_group)
+        self._date_entry.grid(row=0, column=2, sticky="news", padx=3, pady=3)
+
+        time_range = (dt.time(11, 30, 00), dt.time(12, 50, 00))
+        now = datetime.now().time()
+
+        default_meal = now >= time_range[0] and now <= time_range[1]
+
+        self._meal = ttk.Combobox(
+            master=session_group,
+            values=["Lanche", "Almoço"],
+            bootstyle='danger'
+        )
+
+        self._meal.current(default_meal)
+        self._meal.grid(row=1, column=1, columnspan=2,
+                        sticky="news", padx=3, pady=3)
+        self._meal.bind('<<ComboboxSelected>>', self.on_select_meal)
+
+        lanche = load_json('./config/lanches.json')
+        self._lanche_set = set(lanche)
+        self._snack = ttk.Combobox(
+            master=session_group,
+            values=lanche,
+            state='disabled' if default_meal else 'normal',
+            bootstyle='warning'
+        )
+
+        self._snack.current(0)
+        self._snack.grid(row=2, column=1, columnspan=2,
+                         sticky="news", padx=3, pady=3)
+
+        self._period = ttk.Combobox(
+            master=session_group,
+            text="Integral",
+            values=["Integral", "Matutino", "Vespertino", "Noturno"],
+        )
+        self._period.current(0)
+        self._period.grid(row=3, column=1, columnspan=2,
+                          sticky="news", padx=3, pady=3)
+
+        return session_group
+
+    def sync(self):
+        """Initiates the synchronization of reserves from the spreadsheet."""
+        thread = SyncReserves(self.__parent.get_session())
+        thread.start()
+        self.sync_monitor(thread)
+
+    def sync_monitor(self, thread: SyncReserves):
+        """
+        Monitors the progress of the SyncReserves thread.
+
+        Args:
+            thread (SyncReserves): The thread to monitor.
+        """
+        if thread.is_alive():
+            self.after(100, lambda: self.sync_monitor(thread))
+        else:
+            if thread.error:
+                messagebox.showwarning(
+                    title='Registros',
+                    message='Houve um erro ao sincronizar.\n'
+                    'Reinicie o aplicativo, verifique a conexão, e tente novamente.')
+            else:
+                messagebox.showinfo(
+                    title='Registros',
+                    message='Os dados foram sincronizados com sucesso.')
+
+    def create_section_buttons(self) -> tk.Frame:
+        """Creates the section containing the action buttons for the dialog."""
+        session_buttons = tk.Frame(self)
+
+        button = ttk.Button(master=session_buttons, text="Ok",
+                            command=self.on_okay, bootstyle="success-link")
+        button.pack(side="right", padx=1)
+
+        button = ttk.Button(master=session_buttons, text="Cancelar",
+                            command=self.on_closing, bootstyle="danger-link")
+        button.pack(side="right", padx=1)
+
+        button = ttk.Button(master=session_buttons, text="Limpar",
+                            command=self.on_clear, bootstyle="warning-link")
+        button.pack(side="right", padx=1)
+
+        button = ttk.Button(master=session_buttons, text="Integrado",
+                            command=self.on_integral, bootstyle="link")
+        button.pack(side="right", padx=1)
+
+        button = ttk.Button(master=session_buttons, text="Inverter",
+                            command=self.on_invert, bootstyle="link")
+        button.pack(side="right", padx=1)
+
+        button = ttk.Button(master=session_buttons,
+                            text="Sync", command=self.sync, bootstyle="primary-link")
+        button.pack(side="right", padx=1)
+
+        return session_buttons

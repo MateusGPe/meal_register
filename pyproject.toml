@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "registro"
+version = "0.7.0"
+description = ""
+authors = ["Mateus G. Pereira <mateus.pereira@ifsp.edu.br>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+peewee = "^3.17.6"
+gspread = "^6.1.2"
+ttkbootstrap = "^1.10.1"
+xlsxwriter = "^3.2.2"
+fuzzywuzzy = "^0.18.0"
+python-levenshtein = "^0.27.1"
+sqlalchemy = "^2.0.40"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+registrar = "registro.view.gui:main"
