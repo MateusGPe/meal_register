@@ -22,4 +22,4 @@ jobs:
         poetry run pip install pylint
     - name: Analysing the code with pylint
       run: |
-        poetry run pylint $(git ls-files '*.py') --fail-under 5 --fail-on E
+        poetry run pylint $(git ls-files '*.py') --fail-under 9
