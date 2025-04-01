@@ -73,7 +73,7 @@ Certifique-se de que esses arquivos existam no diretório `./config` ou ajuste o
 
     **PowerShell:**
     ```powershell
-    registrar.exe
+    registrar
     ```
 
     **Bash/Zsh/Csh:**
