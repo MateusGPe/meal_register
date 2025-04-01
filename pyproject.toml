@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "registro"
-version = "0.7.0"
+version = "0.7.1"
 description = ""
 authors = ["Mateus G. Pereira <mateus.pereira@ifsp.edu.br>"]
 readme = "README.md"
