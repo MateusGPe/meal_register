@@ -20,7 +20,7 @@ import ttkbootstrap as ttk
 from fuzzywuzzy import fuzz
 
 from registro.control.session_manage import REMOVE_IQ, SessionManager
-from registro.model.tables import to_code
+from registro.control.utils import to_code
 
 
 class SearchStudents(ttk.Frame):

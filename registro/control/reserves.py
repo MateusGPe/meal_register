@@ -7,7 +7,7 @@ and for reserving snacks for all students.
 """
 
 import csv
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -78,7 +78,7 @@ def import_reserves_csv(student_crud: CRUD[Students], reserve_crud: CRUD[Reserve
 
                     csv_reserves_data.append({
                         'pront': pront, 'prato': prato, 'data': data, 'snacks': False,
-                        'reserved': True})
+                        'canceled': False})  # Added 'canceled' field
                 except KeyError as e:
                     print(f"Missing key in row: {row}. Error: {e}")
                 except csv.Error as e:
@@ -93,15 +93,15 @@ def import_reserves_csv(student_crud: CRUD[Students], reserve_crud: CRUD[Reserve
             student.pront: student for student in student_crud.read_all()
         }
 
-        not_in_reserve_entries: List[Dict[str, Optional[str]]] = []
-        for student_pront in all_students_by_pront:
-            for date in unique_dates:
-                if (date, student_pront) not in reserved_data_pront_pairs:
-                    not_in_reserve_entries.append({
-                        'pront': student_pront, 'prato': 'Sem Reserva',
-                        'data': date, 'reserved': False})
+        #not_in_reserve_entries: List[Dict[str, Optional[str]]] = []
+        #for student_pront in all_students_by_pront:
+        #    for date in unique_dates:
+        #        if (date, student_pront) not in reserved_data_pront_pairs:
+        #            not_in_reserve_entries.append({
+        #                'pront': student_pront, 'prato': 'Sem Reserva',
+        #                'data': date, 'canceled': False})  # Added 'canceled' field
 
-        all_reserves_data = csv_reserves_data + not_in_reserve_entries
+        all_reserves_data = csv_reserves_data # + not_in_reserve_entries
 
         reserves_to_insert: List[dict] = []
         for reserve_info in all_reserves_data:
@@ -110,8 +110,8 @@ def import_reserves_csv(student_crud: CRUD[Students], reserve_crud: CRUD[Reserve
                 reserves_to_insert.append({
                     'prato': reserve_info.get('prato'),
                     'data': reserve_info['data'],
-                    'reserved': reserve_info['reserved'],
                     'snacks': False,
+                    'canceled': reserve_info['canceled'],
                     'student_id': all_students_by_pront[pront].id})
             else:
                 print(f"Warning: Student with pront '{pront}' not found"
@@ -220,8 +220,9 @@ def reserve_snacks(student_crud: CRUD[Students], reserve_crud: CRUD[Reserve],
             reserves_to_insert.append({
                 'prato': prato,
                 'data': data,
-                'reserved': True,
                 'snacks': True,
+                'canceled': False,  # Added 'canceled' field
+                'reserved': True,
                 'student_id': student.id
             })
         reserve_crud.bulk_create(reserves_to_insert)
