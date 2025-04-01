@@ -54,7 +54,7 @@ class SpreadSheet:
                 Defaults to "./config/spreadsheet.json".
         """
         try:
-            self.credentials = GrantAccess().credentials
+            self.credentials = GrantAccess().reflesh_token().get_credentials()
             self.client = gspread.authorize(self.credentials)
 
             with open(config_file, 'r', encoding='utf-8') as file:

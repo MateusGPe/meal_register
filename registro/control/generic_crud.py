@@ -10,13 +10,16 @@ functionality for bulk creation and updating, as well as importing data from CSV
 """
 
 import csv
+import logging
 from typing import (Any, Callable, Dict, Generic, List, Optional, Self, Type,
                     TypeVar)
 
-from sqlalchemy import ColumnElement, insert, select
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import DBAPIError
+
+logger = logging.getLogger(__name__)
 
 MODEL = TypeVar('MODEL', bound=declarative_base)
 
@@ -42,7 +45,7 @@ class CRUD(Generic[MODEL]):
         _primary_key_name = model.__mapper__.primary_key[0].name
         self._primary_key_column = getattr(self._model, _primary_key_name)
 
-    def create(self: Self, data: Dict) -> MODEL:
+    def create(self: Self, data: Dict) -> Optional[MODEL]:
         """
         Creates a new record in the database.
 
@@ -50,25 +53,37 @@ class CRUD(Generic[MODEL]):
             data (Dict): A dictionary containing the data for the new record.
 
         Returns:
-            MODEL: The newly created database model instance.
+            Optional[MODEL]: The newly created database model instance, or None if an error occurs.
         """
-        db_item = self._model(**data)
-        self._db_session.add(db_item)
-        self._db_session.commit()
-        self._db_session.refresh(db_item)
-        return db_item
+        try:
+            db_item = self._model(**data)
+            self._db_session.add(db_item)
+            self._db_session.commit()
+            self._db_session.refresh(db_item)
+            return db_item
+        except DBAPIError as e:
+            self._db_session.rollback()
+            logger.error("Error creating record: %s", e)
+            return None
 
     def commit(self: Self) -> None:
         """
         Commits the current transaction to the database.
         """
-        self._db_session.commit()
+        try:
+            self._db_session.commit()
+        except DBAPIError as e:
+            self._db_session.rollback()
+            logger.error("Error committing transaction: %s", e)
 
     def rollback(self: Self) -> None:
         """
         Rolls back the current transaction, discarding any changes.
         """
-        self._db_session.rollback()
+        try:
+            self._db_session.rollback()
+        except DBAPIError as e:
+            logger.error("Error rolling back transaction: %s", e)
 
     def read_one(self: Self, item_id: int) -> Optional[MODEL]:
         """
@@ -80,8 +95,12 @@ class CRUD(Generic[MODEL]):
         Returns:
             Optional[MODEL]: The database model instance if found, otherwise None.
         """
-        return self._db_session.scalar(select(self._model)
-                                       .where(self._primary_key_column == item_id))
+        try:
+            return self._db_session.scalar(select(self._model)
+                                           .where(self._primary_key_column == item_id))
+        except DBAPIError as e:
+            logger.error("Error reading record with ID %s: %s", item_id, e)
+            return None
 
     def read(self: Self, **kwargs: Dict[str, Any]) -> Optional[MODEL]:
         """
@@ -94,11 +113,16 @@ class CRUD(Generic[MODEL]):
         Returns:
             Optional[MODEL]: The database model instance if found, otherwise None.
         """
-        filters = []
-        for key, value in kwargs.items():
-            column = getattr(self._model, key)
-            filters.append(column == value)
-        return self._db_session.scalar(select(self._model).where(*filters))
+        try:
+            filters = [getattr(self._model, key) ==
+                       value for key, value in kwargs.items()]
+            return self._db_session.scalar(select(self._model).where(*filters))
+        except AttributeError as e:
+            logger.error("Invalid filter attribute: %s", e)
+            return None
+        except DBAPIError as e:
+            logger.error("Error reading record with filters %s: %s", kwargs, e)
+            return None
 
     def read_filtered(self: Self, **filters: Any) -> List[MODEL]:
         """
@@ -112,29 +136,30 @@ class CRUD(Generic[MODEL]):
         Returns:
             List[MODEL]: A list of database model instances matching the filters.
         """
-        skip = filters.pop('skip', None)
-        limit = filters.pop('limit', None)
+        try:
+            skip = filters.pop('skip', None)
+            limit = filters.pop('limit', None)
 
-        stmt = select(self._model)
+            stmt = select(self._model)
 
-        if skip:
-            stmt = stmt.offset(skip)
+            if skip:
+                stmt = stmt.offset(skip)
 
-        if limit:
-            stmt = stmt.limit(limit)
+            if limit:
+                stmt = stmt.limit(limit)
 
-        where_clause = []
-        for key, value in filters.items():
-            column = getattr(self._model, key)
-            if isinstance(value, ColumnElement):
-                where_clause.append(value)
-            else:
-                where_clause.append(column == value)
+            where_clause = [getattr(self._model, key) ==
+                            value for key, value in filters.items()]
+            if where_clause:
+                stmt = stmt.where(*where_clause)
 
-        if where_clause:
-            stmt = stmt.where(*where_clause)
-
-        return self._db_session.scalars(stmt).all()
+            return self._db_session.scalars(stmt).all()
+        except AttributeError as e:
+            logger.error("Invalid filter attribute: %s", e)
+            return []
+        except DBAPIError as e:
+            logger.error("Error reading filtered records: %s", e)
+            return []
 
     def read_all(self: Self) -> List[MODEL]:
         """
@@ -156,14 +181,23 @@ class CRUD(Generic[MODEL]):
         Returns:
             Optional[MODEL]: The updated database model instance if found, otherwise None.
         """
-        item_to_update = self._db_session.scalar(
-            select(self._model).where(self._primary_key_column == item_id))
-        if item_to_update:
-            for key, value in row.items():
-                setattr(item_to_update, key, value)
-            self._db_session.commit()
-            self._db_session.refresh(item_to_update)
-        return item_to_update
+        try:
+            item_to_update = self._db_session.scalar(
+                select(self._model).where(self._primary_key_column == item_id))
+            if item_to_update:
+                for key, value in row.items():
+                    setattr(item_to_update, key, value)
+                self._db_session.commit()
+                self._db_session.refresh(item_to_update)
+                return item_to_update
+            else:
+                logger.warning(
+                    "Record with ID %s not found for update.", item_id)
+                return None
+        except DBAPIError as e:
+            self._db_session.rollback()
+            logger.error("Error updating record with ID %s: %s", item_id, e)
+            return None
 
     def delete(self: Self, item_id: int) -> bool:
         """
@@ -175,13 +209,21 @@ class CRUD(Generic[MODEL]):
         Returns:
             bool: True if the record was successfully deleted, False otherwise.
         """
-        item_to_delete = self._db_session.scalar(
-            select(self._model).where(self._primary_key_column == item_id))
-        if item_to_delete:
-            self._db_session.delete(item_to_delete)
-            self._db_session.commit()
-            return True
-        return False
+        try:
+            item_to_delete = self._db_session.scalar(
+                select(self._model).where(self._primary_key_column == item_id))
+            if item_to_delete:
+                self._db_session.delete(item_to_delete)
+                self._db_session.commit()
+                return True
+
+            logger.warning(
+                "Record with ID %s not found for deletion.", item_id)
+            return False
+        except DBAPIError as e:
+            self._db_session.rollback()
+            logger.error("Error deleting record with ID %s: %s", item_id, e)
+            return False
 
     def bulk_create(self: Self, rows: List[Dict]) -> bool:
         """
@@ -199,7 +241,8 @@ class CRUD(Generic[MODEL]):
             self._db_session.commit()
             return True
         except DBAPIError as e:
-            print(f"Error during bulk insert of {type(self._model)}: {e}")
+            self._db_session.rollback()
+            logger.error("Error during bulk insert: %s", e)
             return False
 
     def import_csv(self: Self, csv_file: str,
@@ -219,15 +262,13 @@ class CRUD(Generic[MODEL]):
         try:
             with open(csv_file, "r", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
-                rows: List[dict] = []
-
-                for row in reader:
-                    rows.append(value_processor(row))
-
-                self.bulk_create(rows)
-            return True
+                rows = [value_processor(row) for row in reader]
+                return self.bulk_create(rows)
         except FileNotFoundError:
-            print(f"File not found: {csv_file}")
+            logger.error("CSV file not found: %s", csv_file)
+            return False
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error importing CSV file %s: %s", csv_file, e)
             return False
 
     def bulk_update(self: Self, rows: List[Dict]) -> bool:
@@ -245,31 +286,27 @@ class CRUD(Generic[MODEL]):
             for row in rows:
                 item_id = row.get(self._primary_key_column.name)
                 if item_id is None:
-                    print(
-                        f"Warning: Skipping row due to missing primary key: {row}")
+                    logger.warning(
+                        "Skipping row due to missing primary key: %s", row)
                     continue
 
                 item_to_update = self._db_session.scalar(
-                    select(self._model).where(
-                        self._primary_key_column == item_id)
-                )
+                    select(self._model).where(self._primary_key_column == item_id))
 
                 if item_to_update:
                     for key, value in row.items():
                         if key != self._primary_key_column.name:
                             setattr(item_to_update, key, value)
                 else:
-                    print(
-                        f"Warning: Skipping update for ID {item_id} as it does not exist.")
+                    logger.warning(
+                        "Skipping update for ID %s as it does not exist.", item_id)
 
             self._db_session.commit()
             return True
         except DBAPIError as e:
             self._db_session.rollback()
-            print(
-                f"Database error during bulk update of {type(self._model)}: {e}")
+            logger.error("Database error during bulk update: %s", e)
             return False
         except ValueError as e:
-            print(
-                f"Invalid data during bulk update of {type(self._model)}: {e}")
+            logger.error("Invalid data during bulk update: %s", e)
             return False

@@ -4,10 +4,18 @@
 """
 Provides a class to handle granting and managing access to Google Sheets and Drive
 using the Google Sheets API and Google Drive API.
+
+The `GrantAccess` class simplifies the process of managing Google API credentials by:
+- Checking for existing valid credentials.
+- Refreshing expired credentials automatically.
+- Initiating a new authorization flow if no valid credentials are found.
+- Saving credentials to a token file for reuse in subsequent sessions.
+
+This class is designed to work with the Google Sheets API and Google Drive API.
 """
 
 import os.path
-from typing import Optional
+from typing import Optional, Self
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -23,39 +31,83 @@ class GrantAccess:
     """
     Handles the process of granting and managing access to Google Sheets and Drive.
 
-    This class checks for existing valid credentials, refreshes them if expired,
-    or initiates a new authorization flow if no valid credentials are found.
-    The credentials are saved to a token file for subsequent use.
-    """
-    credentials: Optional[Credentials] = None
+    This class provides methods to manage Google API credentials, ensuring that
+    the application has the necessary access to interact with Google Sheets and Drive.
+    It supports refreshing expired tokens and initiating new authorization flows
+    when required.
 
-    def __init__(self, credential_path: str = "./config/credentials.json",
+    Attributes:
+        _credentials (Optional[Credentials]): The current Google API credentials.
+        _credentials_path (str): The path to the Google Cloud client secrets JSON file.
+        _token_path (str): The path to the token file containing the access token.
+    """
+
+    def __init__(self: Self, credentials_path: str = "./config/credentials.json",
                  token_path: str = "./config/token.json"):
         """
         Initializes the GrantAccess object.
 
-        Checks for an existing token file. If found and valid, loads the credentials.
-        If no valid token is found, it attempts to refresh existing credentials
-        or initiates a new authorization flow using the provided credentials file.
-
         Args:
-            credential_path (str, optional): The path to the Google Cloud client
-                secrets JSON file. Defaults to "./config/credentials.json".
-            token_path (str, optional): The path to the file where the Google
-                access token will be stored. Defaults to "./config/token.json".
+            credentials_path (str): The path to the Google Cloud client secrets JSON file.
+                This file contains the client ID and client secret for the application.
+                Defaults to "./config/credentials.json".
+            token_path (str): The path to the token file containing the access token.
+                This file is used to store and reuse credentials between sessions.
+                Defaults to "./config/token.json".
         """
-        if os.path.exists(token_path):
-            self.credentials = Credentials.from_authorized_user_file(
-                token_path, SCOPES)
+        self._credentials: Optional[Credentials] = None
+        self._credentials_path: str = credentials_path
+        self._token_path: str = token_path
 
-        if not self.credentials or not self.credentials.valid:
-            if self.credentials and self.credentials.expired and self.credentials.refresh_token:
-                self.credentials.refresh(Request())
+    def reflesh_token(self: Self) -> Self:
+        """
+        Refreshes or obtains new Google API credentials.
+
+        This method performs the following steps:
+        1. Checks if a token file exists at the specified `token_path`.
+        2. If the token file exists, it loads the credentials from the file.
+        3. If the credentials are expired but have a refresh token, it refreshes them.
+        4. If no valid credentials are found, it initiates a new authorization flow
+           using the client secrets file at `credentials_path`.
+        5. Saves the refreshed or newly obtained credentials to the token file.
+
+        Returns:
+            Self: The current instance of the `GrantAccess` class with updated credentials.
+
+        Raises:
+            FileNotFoundError: If the credentials file does not exist.
+            Exception: If an error occurs during the authorization flow or token refresh.
+        """
+        if os.path.exists(self._token_path):
+            self._credentials = Credentials.from_authorized_user_file(
+                self._token_path, SCOPES)
+
+        if not self._credentials or not self._credentials.valid:
+            if self._credentials and self._credentials.expired and self._credentials.refresh_token:
+                self._credentials.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    credential_path, SCOPES
+                    self._credentials_path, SCOPES
                 )
-                self.credentials = flow.run_local_server(port=0)
+                self._credentials = flow.run_local_server(port=0)
 
-            with open(token_path, "w", encoding="utf-8") as token:
-                token.write(self.credentials.to_json())
+            with open(self._token_path, "w", encoding="utf-8") as token:
+                token.write(self._credentials.to_json())
+        return self
+
+    def get_credentials(self: Self) -> Credentials:
+        """
+        Retrieves the current Google API credentials.
+
+        This method should be called after ensuring that the credentials are valid
+        (e.g., by calling `reflesh_token`).
+
+        Returns:
+            Credentials: The current Google API credentials.
+
+        Raises:
+            ValueError: If the credentials are not initialized or invalid.
+        """
+        if not self._credentials:
+            raise ValueError("Credentials are not initialized. Call `reflesh_token` first.")
+        return self._credentials

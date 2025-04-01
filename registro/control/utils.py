@@ -100,9 +100,7 @@ def load_csv(filename: str) -> Optional[dict | list]:
     """
     try:
         with open(filename, "r", encoding="utf-8", errors="ignore") as file:
-            csv_reader = csv.DictReader(file)
-            data = [row for row in csv_reader]
-        return data
+            return list(csv.DictReader(file))
     except FileNotFoundError:
         print(f"File not found: {filename}", file=sys.stderr)
     except csv.Error as e:
