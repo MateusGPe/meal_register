@@ -7,6 +7,8 @@ including selecting meal type, time, date, and classes.
 """
 
 import datetime as dt
+import logging
+import sys
 import tkinter as tk
 from datetime import datetime
 from tkinter import messagebox
@@ -17,6 +19,8 @@ import ttkbootstrap as ttk
 from registro.control.session_manage import ANYTHING, INTEGRATE_CLASSES
 from registro.control.sync_thread import SyncReserves
 from registro.control.utils import SESSION, capitalize, load_json, save_json
+
+logger = logging.getLogger(__name__)
 
 
 def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]],
@@ -78,9 +82,8 @@ class SessionDialog(tk.Toplevel):
         """Handles the event when the dialog window is closed."""
         try:
             self._callback(None)
-            self.destroy()
-        except Exception:  # pylint: disable=broad-except
-            pass
+        except Exception as e:  # pylint: disable=broad-except
+            logger.exception(e)
 
     def on_clear(self):
         """Clears the selection of all class checkbuttons."""
@@ -180,7 +183,14 @@ class SessionDialog(tk.Toplevel):
         self._meal.bind('<<ComboboxSelected>>', self.on_select_meal)
 
         lanche = load_json('./config/lanches.json')
+
+        if not lanche:
+            logger.error(
+                "Failed to load snack options from './config/lanches.json'.")
+            sys.exit(1)
+
         self._lanche_set = set(lanche)
+
         self._snack = ttk.Combobox(
             master=session_group,
             values=lanche,

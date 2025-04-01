@@ -84,7 +84,12 @@ class SessionManager:
         self._session_info: Optional[dict] = None
 
         self._current_session_pronts: Set = set()
-        self._spread: SpreadSheet = SpreadSheet()
+
+        try:
+            self._spread: SpreadSheet = SpreadSheet()
+        except Exception:  # pylint: disable=broad-except
+            sys.exit(1)
+
         self._all_reserves: List = []
         self._filtered_discentes: List = []
         self._xls_saved: str = ""

@@ -7,6 +7,7 @@ fetching, and appending data.
 """
 
 import json
+import logging
 from typing import List, Set, Tuple, Optional
 
 import gspread
@@ -14,6 +15,8 @@ from google.oauth2.credentials import Credentials
 from gspread.exceptions import APIError, WorksheetNotFound, SpreadsheetNotFound
 
 from registro.control.google_creds import GrantAccess
+
+logger = logging.getLogger(__name__)
 
 
 def _convert_to_tuples(list_of_lists: list) -> Set[Tuple[str, ...]]:
@@ -64,13 +67,17 @@ class SpreadSheet:
 
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON configuration: {e}")
+            raise
         except SpreadsheetNotFound as e:
             print(f"Error opening spreadsheet: {e}")
+            raise
         except IOError as e:
             print(f"Error reading configuration file: {e}")
+            raise
         except Exception as e:  # pylint: disable=broad-except
             print(f"An unexpected error occurred while opening spreadsheet '{
                 self.configuration['key']}'- {type(e).__name__}: {e}")
+            raise
 
     def update_data(self, rows: List[List[str]], sheet_name: str, replace: bool = False) -> bool:
         """
@@ -90,20 +97,22 @@ class SpreadSheet:
             if replace:
                 worksheet.clear()
                 worksheet.update('A1', rows, value_input_option='USER_ENTERED')
-                print(f"Sheet '{sheet_name}' data replaced successfully.")
+                logger.info(
+                    "Sheet '%s' data replaced successfully.", sheet_name)
             else:
                 worksheet.append_rows(rows, value_input_option='USER_ENTERED')
-                print(f"Rows appended to sheet '{sheet_name}' successfully.")
+                logger.info(
+                    "Rows appended to sheet '%s' successfully.", sheet_name)
             return True
         except WorksheetNotFound:
-            print(f"Error: Sheet '{sheet_name}' not found.")
+            logger.error("Error: Sheet '%s' not found.", sheet_name)
             return False
         except APIError as e:
-            print(f"Error updating sheet '{sheet_name}': {e}")
+            logger.error("Error updating sheet '%s': %s", sheet_name, e)
             return False
         except Exception as e:  # pylint: disable=broad-except
-            print(f"An unexpected error occurred while updating sheet '{
-                sheet_name}'- {type(e).__name__}: {e}")
+            logger.error("An unexpected error occurred while updating sheet '%s' - %s: %s",
+                         sheet_name, type(e).__name__, e)
             return False
 
     def fetch_sheet_values(self, sheet_name: str) -> Optional[List[List[str]]]:
@@ -170,5 +179,5 @@ class SpreadSheet:
             return False
         except Exception as e:  # pylint: disable=broad-except
             print(f"An unexpected error occurred while appending unique rows to sheet '{
-                    sheet_name}'- {type(e).__name__}: {e}")
+                sheet_name}'- {type(e).__name__}: {e}")
             return False
