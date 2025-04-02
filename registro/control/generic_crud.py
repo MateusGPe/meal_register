@@ -309,3 +309,12 @@ class CRUD(Generic[MODEL]):
         except ValueError as e:
             logger.error("Invalid data during bulk update: %s", e)
             return False
+
+    def get_session(self: Self):
+        """
+        Retrieves the current database session.
+
+        Returns:
+            Session: The SQLAlchemy database session instance used for database operations.
+        """
+        return self._db_session

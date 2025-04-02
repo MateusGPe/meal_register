@@ -22,7 +22,7 @@ from registro.control.reserves import reserve_snacks
 from registro.control.sync_session import SpreadSheet
 from registro.control.utils import (SESSION, get_documments_path, load_json,
                                     save_json, to_code)
-from registro.model.tables import Base, Reserve, Session, Students, Consumption
+from registro.model.tables import Base, Reserve, Session, Student, Consumption, Turma
 
 TRANSLATE_DICT = str.maketrans("0123456789Xx", "abcdefghijkk")
 REMOVE_IQ = re.compile(r"[Ii][Qq]\d0+")
@@ -64,8 +64,8 @@ class SessionManager:
 
         self.database_session = session_local()
 
-        self.student_crud: CRUD[Students] = CRUD[Students](
-            self.database_session, Students)
+        self.student_crud: CRUD[Student] = CRUD[Student](
+            self.database_session, Student)
 
         self.reserve_crud: CRUD[Reserve] = CRUD[Reserve](
             self.database_session, Reserve)
@@ -75,6 +75,9 @@ class SessionManager:
 
         self.consumption_crud: CRUD[Consumption] = CRUD[Consumption](
             self.database_session, Consumption)
+
+        self.turma_crud: CRUD[Turma] = CRUD[Turma](
+            self.database_session, Turma)
 
         self._session_id: Optional[int] = None
         self._periodo: Optional[str] = None
@@ -123,7 +126,7 @@ class SessionManager:
             Optional[List[Dict]]: A list of student information.
         """
         if (not self._session_info and not self.load_session()
-            ) or self._turmas is None:
+                ) or self._turmas is None:
             return None
 
         is_snack = self._meal_type.lower() == "lanche"
@@ -143,11 +146,14 @@ class SessionManager:
 
         for reserve in reserves:
             student = reserve.student
-            if student and student.turma in selected_classes_with_reserve:
+            student_turmas = set(t.nome for t in student.turmas)
+
+            if student and bool(selected_classes_with_reserve
+                                & student_turmas):
                 student_info = {
                     "Pront": student.pront,
                     "Nome": student.nome,
-                    "Turma": student.turma,
+                    "Turma": ','.join(t.nome for t in student.turmas),
                     "Prato": reserve.prato,
                     "Data": reserve.data,
                     "id": to_code(student.pront),
@@ -166,7 +172,7 @@ class SessionManager:
                     filtered_students.append({
                         "Pront": student.pront,
                         "Nome": student.nome,
-                        "Turma": student.turma,
+                        "Turma": ','.join(t.nome for t in student.turmas),
                         "Prato": "Sem Reserva",
                         "Data": self._date,
                         "id": to_code(student.pront),
@@ -349,7 +355,7 @@ class SessionManager:
                     consumption.reserve_id) if consumption.reserve_id else None
                 meal_type = reserve.prato if reserve else "Sem Reserva"
                 served_students_data.append(
-                    (student.pront, student.nome, student.turma,
+                    (student.pront, student.nome, ','.join(t.nome for t in student.turmas),
                      consumption.consumption_time, meal_type)
                 )
                 served_pronts.add(student.pront)
