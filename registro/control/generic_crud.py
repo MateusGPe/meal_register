@@ -190,10 +190,9 @@ class CRUD(Generic[MODEL]):
                 self._db_session.commit()
                 self._db_session.refresh(item_to_update)
                 return item_to_update
-            else:
-                logger.warning(
-                    "Record with ID %s not found for update.", item_id)
-                return None
+            logger.warning(
+                "Record with ID %s not found for update.", item_id)
+            return None
         except DBAPIError as e:
             self._db_session.rollback()
             logger.error("Error updating record with ID %s: %s", item_id, e)

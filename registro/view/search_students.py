@@ -133,7 +133,9 @@ class SearchStudents(ttk.Frame):
 
         Registers the selected student if one is selected.
         """
-        self._entry_var.set('')
+        if self._entry_var.get() != '---':
+            self._entry_var.set('')
+
         selected = self._tree_view.selection()
         last_pront = None
         if len(selected):
@@ -149,6 +151,8 @@ class SearchStudents(ttk.Frame):
                 messagebox.showwarning(
                     message=f'O discente: {last_pront["Nome"]}.\nJá foi registrado!',
                     title='Registro')
+                return
+            self.on_entry_change()
 
     def on_tree_select(self, *_):
         """
@@ -188,13 +192,16 @@ class SearchStudents(ttk.Frame):
         Registers the currently selected student in the treeview.
         """
         if self.last_pront:
-            self._entry_var.set('')
+            if self._entry_var.get() != '---':
+                self._entry_var.set('')
+
             if not self.insert_discente(self.last_pront):
                 messagebox.showwarning(
                     message=f'O discente: {self.last_pront["Nome"]}.\nJá foi registrado!',
                     title='Registro')
                 self.last_pront = None
-                self._entry_var.set('')
+                return
+            self.on_entry_change()
 
     def update_data(self, tree: Treeview, register: str):
         """
