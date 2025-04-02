@@ -23,7 +23,7 @@ from registro.control.session_manage import REMOVE_IQ, SessionManager
 from registro.control.utils import to_code
 
 
-class SearchStudents(ttk.Frame):
+class SearchStudents(ttk.Frame):  # pylint: disable=too-many-ancestors
     """
     A frame for searching and registering students for meals.
 
