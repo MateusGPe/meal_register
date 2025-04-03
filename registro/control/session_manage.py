@@ -19,10 +19,12 @@ from sqlalchemy.orm import sessionmaker
 
 from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks
+from registro.control.student_filter import StudentFilter
 from registro.control.sync_session import SpreadSheet
 from registro.control.utils import (SESSION, get_documments_path, load_json,
-                                    save_json, to_code)
-from registro.model.tables import Base, Reserve, Session, Student, Consumption, Turma
+                                    save_json)
+from registro.model.tables import (Base, Consumption, Group, Reserve, Session,
+                                   Student)
 
 TRANSLATE_DICT = str.maketrans("0123456789Xx", "abcdefghijkk")
 REMOVE_IQ = re.compile(r"[Ii][Qq]\d0+")
@@ -64,6 +66,8 @@ class SessionManager:
 
         self.database_session = session_local()
 
+        self._filter = StudentFilter(self.database_session)
+
         self.student_crud: CRUD[Student] = CRUD[Student](
             self.database_session, Student)
 
@@ -76,13 +80,13 @@ class SessionManager:
         self.consumption_crud: CRUD[Consumption] = CRUD[Consumption](
             self.database_session, Consumption)
 
-        self.turma_crud: CRUD[Turma] = CRUD[Turma](
-            self.database_session, Turma)
+        self.turma_crud: CRUD[Group] = CRUD[Group](
+            self.database_session, Group)
 
         self._session_id: Optional[int] = None
         self._periodo: Optional[str] = None
         self._hora: Optional[str] = None
-        self._turmas: Optional[List[str]] = None
+        self._turmas: Optional[Set[str]] = None
         self._date: Optional[str] = None
         self._meal_type: Optional[str] = None
 
@@ -125,64 +129,7 @@ class SessionManager:
         Returns:
             Optional[List[Dict]]: A list of student information.
         """
-        if (not self._session_info and not self.load_session()
-                ) or self._turmas is None:
-            return None
-
-        is_snack = self._meal_type.lower() == "lanche"
-        selected_turmas = set(self._turmas)
-        filtered_students = []
-        reserved_pronts = set()
-
-        # Load reserves for the current date and snack status
-        reserves: List[Reserve] = self.reserve_crud.read_filtered(
-            data=self._date, snacks=is_snack
-        )
-
-        # Filter students with reservations
-        selected_classes_with_reserve = set(self._turmas)
-        if 'SEM RESERVA' in selected_classes_with_reserve:
-            selected_classes_with_reserve.discard('SEM RESERVA')
-
-        for reserve in reserves:
-            student = reserve.student
-            student_turmas = set(t.nome for t in student.turmas)
-
-            if student and bool(selected_classes_with_reserve
-                                & student_turmas):
-                student_info = {
-                    "Pront": student.pront,
-                    "Nome": student.nome,
-                    "Turma": ','.join(t.nome for t in student.turmas),
-                    "Prato": reserve.prato,
-                    "Data": reserve.data,
-                    "id": to_code(student.pront),
-                    "Hora": None,
-                    "reserve_id": reserve.id,
-                    "student_id": student.id,
-                }
-                filtered_students.append(student_info)
-                reserved_pronts.add(student.pront)
-                self._pront_to_reserve_id_map[student.pront] = reserve.id
-
-        # Add students without reservations if 'SEM RESERVA' is selected
-        if 'SEM RESERVA' in selected_turmas:
-            for student in self.student_crud.read_all():
-                if student.pront not in reserved_pronts:
-                    filtered_students.append({
-                        "Pront": student.pront,
-                        "Nome": student.nome,
-                        "Turma": ','.join(t.nome for t in student.turmas),
-                        "Prato": "Sem Reserva",
-                        "Data": self._date,
-                        "id": to_code(student.pront),
-                        "Hora": None,
-                        "reserve_id": None,
-                        "student_id": student.id,
-                    })
-
-        self._filtered_discentes = filtered_students
-        return self._filtered_discentes
+        return self._filter.filter_students(self._date, self._turmas, self._snacks)
 
     def create_student(self, student: Tuple[str, str, str, str, str]) -> bool:
         """
@@ -265,7 +212,7 @@ class SessionManager:
         if not session_:
             return None
 
-        self._date = session_.data
+        self._date = session_.date
         self._snacks = session_.refeicao == "lanche"
         self._update_session(session_, [])
         return self._session_info
@@ -279,10 +226,10 @@ class SessionManager:
             discentes_ (List[Any]): A list of served students (not currently used).
         """
         self._meal_type = session_.refeicao
-        self._periodo = session_.periodo
-        self._date = session_.data
-        self._hora = session_.hora
-        self._turmas = json.loads(session_.turmas)
+        self._periodo = session_.period
+        self._date = session_.date
+        self._hora = session_.time
+        self._turmas = set(json.loads(session_.groups))
         self._served_meals = discentes_
 
     def get_sheet_path(self):
@@ -291,7 +238,7 @@ class SessionManager:
 
     def get_session_students(self):
         """Returns the list of filtered students for the current session."""
-        return self._filtered_discentes
+        return self._filter.get_filtered_students()
 
     def export_sheet(self):
         """
@@ -353,9 +300,9 @@ class SessionManager:
             if student:
                 reserve = self.reserve_crud.read_one(
                     consumption.reserve_id) if consumption.reserve_id else None
-                meal_type = reserve.prato if reserve else "Sem Reserva"
+                meal_type = reserve.dish if reserve else "Sem Reserva"
                 served_students_data.append(
-                    (student.pront, student.nome, ','.join(t.nome for t in student.turmas),
+                    (student.pront, student.name, ','.join(t.name for t in student.groups),
                      consumption.consumption_time, meal_type)
                 )
                 served_pronts.add(student.pront)
@@ -366,7 +313,7 @@ class SessionManager:
 
     def get_session_classes(self):
         """Returns the list of classes selected for the current session."""
-        return self._turmas or []
+        return self._turmas or set()
 
     def set_students(self, served_update: List[Tuple[str, str, str, str, str]]):
         """
@@ -422,32 +369,32 @@ class SessionManager:
             bool: True if the session was created successfully, False otherwise.
         """
         refeicao = session["refeição"].lower()
-        data = session["data"]
-        self._date = data
+        date = session["data"]
+        self._date = date
 
         self._snacks = False
-        reserves = self.reserve_crud.read_filtered(snacks=False, data=data)
+        reserves = self.reserve_crud.read_filtered(snacks=False, date=date)
         if refeicao == "almoço":
             if len(reserves) == 0:
                 return False
         elif refeicao == "lanche":
             self._snacks = True
             reserves = self.reserve_crud.read_filtered(
-                snacks=True, data=data
+                snacks=True, date=date
             )
             if len(reserves) == 0:
                 reserve_snacks(self.student_crud,
-                               self.reserve_crud, data, session['lanche'])
+                               self.reserve_crud, date, session['lanche'])
                 reserves = self.reserve_crud.read_filtered(
-                    snacks=True, data=data
+                    snacks=True, date=date
                 )
 
         session_data = {
             "refeicao": refeicao,
-            "periodo": session["período"],
-            "data": session["data"],
-            "hora": session["hora"],
-            "turmas": json.dumps(session["turmas"]),
+            "period": session["período"],
+            "date": session["data"],
+            "time": session["hora"],
+            "groups": json.dumps(session["turmas"]),
         }
         session_ = self.session_crud.create(session_data)
         self._session_id = session_.id
@@ -473,7 +420,7 @@ class SessionManager:
         if not session_:
             return None
 
-        session_.turmas = json.dumps(classes)
-        self.session_crud.update(session_.id, {"turmas": session_.turmas})
-        self._turmas = classes
+        session_.groups = json.dumps(classes)
+        self.session_crud.update(session_.id, {"groups": session_.groups})
+        self._turmas = set(classes)
         return self._turmas

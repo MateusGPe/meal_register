@@ -13,12 +13,13 @@ session data.
 import csv
 import ctypes
 import json
-from json import JSONDecodeError
 import os
 import platform
 import re
 import sys
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, TypedDict
+from json import JSONDecodeError
+from typing import (Any, Callable, Dict, List, Literal, Optional, Tuple,
+                    TypedDict)
 
 from fuzzywuzzy import fuzz
 
@@ -38,6 +39,7 @@ SESSION = TypedDict(
         'hora': str,
         'turmas': List[str]
     })
+
 
 def to_code(text: str) -> str:
     """
@@ -241,7 +243,12 @@ TRANSLATE_KEYS = {
     'matrícula iq': 'pront',
     'matrícula': 'pront',
     'prontuário': 'pront',
-    'refeição': 'prato'
+    'refeição': 'dish',
+    'nome': 'name',
+    'turma': 'group',
+    'data': 'date',
+    'hora': 'time',
+    'prato': 'dish',
 }
 
 
@@ -294,7 +301,7 @@ def adjust_keys(input_dict: dict) -> dict:
             if isinstance(value, str):
                 value = value.strip()
 
-            if key in ["nome", "prato"]:
+            if key in ["name", "dish"]:
                 value = " ".join(capitalize(v) for v in value.split(" "))
             elif key == "pront":
                 value = re.sub(r'IQ\d{2}', 'IQ30', value.upper())

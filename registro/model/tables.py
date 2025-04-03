@@ -2,57 +2,58 @@
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
 
 """
-Defines the SQLAlchemy models for the database tables: students, reserve,
-and session. Includes functions for data translation.
+Defines the SQLAlchemy models for the database tables: groups, students, reserve,
+and session.
 """
 from typing import List, Optional
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table, UniqueConstraint
+from sqlalchemy import (Boolean, Column, ForeignKey, Integer, String, Table,
+                        UniqueConstraint)
 from sqlalchemy.orm import (Mapped, declarative_base, mapped_column,
                             relationship)
 
 Base = declarative_base()
 
-student_turma_association = Table(
-    "student_turma_association",
+student_group_association = Table(
+    "student_group_association",
     Base.metadata,
-    Column("student_id", Integer, ForeignKey("students.id"), primary_key=True),
-    Column("turma_id", Integer, ForeignKey("turmas.id"), primary_key=True),
+    Column("student_id", Integer, ForeignKey("student.id"), primary_key=True),
+    Column("group_id", Integer, ForeignKey("group.id"), primary_key=True),
 )
 
 # pylint: disable=too-few-public-methods
 
 
-class Turma(Base):
-    """Represents the turmas (classes/groups) table."""
-    __tablename__ = "turmas"
+class Group(Base):
+    """Represents the groups (classes/groups) table."""
+    __tablename__ = "group"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    nome: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
     students: Mapped[List["Student"]] = relationship(
-        secondary=student_turma_association,
-        back_populates="turmas",
+        secondary=student_group_association,
+        back_populates="groups",
         lazy="select"
     )
 
     def __repr__(self):
-        """Returns a string representation of the Turma object."""
-        return f"<Turma(nome='{self.nome!r}')>"
+        """Returns a string representation of the Group object."""
+        return f"<Group(name='{self.name!r}')>"
 
 # pylint: disable=too-few-public-methods
 
 
 class Student(Base):
     """Represents the students table in the database."""
-    __tablename__ = "students"
+    __tablename__ = "student"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     pront: Mapped[str] = mapped_column(String, unique=True)
-    nome: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
 
-    turmas: Mapped[List["Turma"]] = relationship(
-        secondary=student_turma_association,
+    groups: Mapped[List["Group"]] = relationship(
+        secondary=student_group_association,
         back_populates="students",
         lazy="select"
     )
@@ -63,31 +64,8 @@ class Student(Base):
 
     def __repr__(self):
         """Returns a string representation of the Student object."""
-        return f"<Student(pront='{self.pront!r}', nome='{self.nome!r}')>"
+        return f"<Student(pront='{self.pront!r}', name='{self.name!r}')>"
 
-
-# class Student(Base):
-#     """Represents the students table in the database."""
-#     __tablename__ = "students"
-
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     pront: Mapped[str] = mapped_column(String)
-#     nome: Mapped[str] = mapped_column(String)
-#     turma: Mapped[str] = mapped_column(String)
-
-#     reserves: Mapped[List["Reserve"]] = relationship(back_populates="student")
-#     consumptions: Mapped[List["Consumption"]
-#                          ] = relationship(back_populates="student")
-
-#     __table_args__ = (
-#         UniqueConstraint(
-#             "pront", name="_pront_uc", sqlite_on_conflict="REPLACE"
-#         ),
-#     )
-
-#     def __repr__(self):
-#         """Returns a string representation of the Student object."""
-#         return f"<Student(pront='{self.pront!r}', nome='{self.nome!r}', turma='{self.turma!r}')>"
 
 # pylint: disable=too-few-public-methods
 
@@ -98,9 +76,9 @@ class Reserve(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     student_id: Mapped[int] = mapped_column(
-        ForeignKey("students.id", ondelete="RESTRICT"))
-    prato: Mapped[Optional[str]] = mapped_column(String)
-    data: Mapped[str] = mapped_column(String)
+        ForeignKey("student.id", ondelete="RESTRICT"))
+    dish: Mapped[Optional[str]] = mapped_column(String)
+    date: Mapped[str] = mapped_column(String)
     snacks: Mapped[bool] = mapped_column(Boolean, default=False)
     canceled: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -110,15 +88,15 @@ class Reserve(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "student_id", "data", "snacks", name="_pront_uc", sqlite_on_conflict="REPLACE"
+            "student_id", "date", "snacks", name="_pront_uc", sqlite_on_conflict="REPLACE"
         ),
     )
 
     def __repr__(self) -> str:
         """Returns a string representation of the Reserve object."""
         return (
-            f"<Reserve(student_id={self.student_id}, prato={self.prato!r}, "
-            f"data={self.data!r}, snacks={self.snacks!r}, canceled={self.canceled!r})>"
+            f"<Reserve(student_id={self.student_id}, prato={self.dish!r}, "
+            f"date={self.date!r}, snacks={self.snacks!r}, canceled={self.canceled!r})>"
         )
 
 # pylint: disable=too-few-public-methods
@@ -130,25 +108,25 @@ class Session(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     refeicao: Mapped[str] = mapped_column(String)
-    periodo: Mapped[str] = mapped_column(String)
-    data: Mapped[str] = mapped_column(String)
-    hora: Mapped[str] = mapped_column(String)
-    turmas: Mapped[str] = mapped_column(String)
+    period: Mapped[str] = mapped_column(String)
+    date: Mapped[str] = mapped_column(String)
+    time: Mapped[str] = mapped_column(String)
+    groups: Mapped[str] = mapped_column(String)
 
     consumptions: Mapped[List["Consumption"]
                          ] = relationship(back_populates="session")
 
     __table_args__ = (
         UniqueConstraint(
-            'refeicao', 'periodo', 'data', 'hora', name="_all_uc",
+            'refeicao', 'period', 'date', 'time', name="_all_uc",
             sqlite_on_conflict="REPLACE"
         ),
     )
 
     def __repr__(self):
         """Returns a string representation of the Session object."""
-        return (f"<Session(refeicao='{self.refeicao!r}', periodo='{self.periodo!r}', "
-                f"data='{self.data!r}', hora='{self.hora!r}', turmas='{self.turmas!r}')>")
+        return (f"<Session(refeicao='{self.refeicao!r}', periodo='{self.period!r}', "
+                f"date='{self.date!r}', hora='{self.time!r}', groups='{self.groups!r}')>")
 
 # pylint: disable=too-few-public-methods
 
@@ -159,7 +137,7 @@ class Consumption(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     student_id: Mapped[int] = mapped_column(
-        ForeignKey("students.id", ondelete="RESTRICT"))
+        ForeignKey("student.id", ondelete="RESTRICT"))
     session_id: Mapped[int] = mapped_column(
         ForeignKey("session.id", ondelete="RESTRICT"))
     consumption_time: Mapped[str] = mapped_column(String)
