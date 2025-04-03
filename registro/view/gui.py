@@ -176,7 +176,7 @@ class RegistrationApp(tk.Tk):
     def _load_existing_session(self):
         """Loads existing session data if available."""
         if self._session.load_session() is not None:
-            self._session.filter_students()
+            self._session.load_reserves()
             servidos = self._session.get_served_students()
             for dis in servidos:
                 self.table.insert_row(values=dis)
@@ -297,16 +297,16 @@ class RegistrationApp(tk.Tk):
         """
         if result:
             return self._process_new_session(result)
-
-        self.destroy()
-        return True
+        else:
+            self.destroy()
+            return True
 
     def _process_new_session(self, result: SESSION) -> bool:
         """Processes the data from the new session dialog."""
         if not self._session.new_session(result):
             return False
 
-        self._session.filter_students()
+        self._session.load_reserves()
         self._update_class_checkboxes(result['turmas'])
         self.update_info()
         self.deiconify()

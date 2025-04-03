@@ -11,7 +11,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 import xlsxwriter
 from sqlalchemy import create_engine
@@ -19,12 +19,10 @@ from sqlalchemy.orm import sessionmaker
 
 from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks
-from registro.control.student_filter import StudentFilter
 from registro.control.sync_session import SpreadSheet
-from registro.control.utils import (SESSION, get_documments_path, load_json,
-                                    save_json)
-from registro.model.tables import (Base, Consumption, Group, Reserve, Session,
-                                   Student)
+from registro.control.utils import (SESSION, get_documments_path,
+                                    load_json, save_json)
+from registro.model.tables import Base, Reserve, Session, Students
 
 TRANSLATE_DICT = str.maketrans("0123456789Xx", "abcdefghijkk")
 REMOVE_IQ = re.compile(r"[Ii][Qq]\d0+")
@@ -66,10 +64,8 @@ class SessionManager:
 
         self.database_session = session_local()
 
-        self._filter = StudentFilter(self.database_session)
-
-        self.student_crud: CRUD[Student] = CRUD[Student](
-            self.database_session, Student)
+        self.student_crud: CRUD[Students] = CRUD[Students](
+            self.database_session, Students)
 
         self.reserve_crud: CRUD[Reserve] = CRUD[Reserve](
             self.database_session, Reserve)
@@ -77,33 +73,27 @@ class SessionManager:
         self.session_crud: CRUD[Session] = CRUD[Session](
             self.database_session, Session)
 
-        self.consumption_crud: CRUD[Consumption] = CRUD[Consumption](
-            self.database_session, Consumption)
+        self._session_id: int = 0
+        self._periodo = None
+        self._hora = None
+        self._turmas = None
+        self._date = None
+        self._meal_type = None
 
-        self.turma_crud: CRUD[Group] = CRUD[Group](
-            self.database_session, Group)
-
-        self._session_id: Optional[int] = None
-        self._periodo: Optional[str] = None
-        self._hora: Optional[str] = None
-        self._turmas: Optional[Set[str]] = None
-        self._date: Optional[str] = None
-        self._meal_type: Optional[str] = None
-
-        self._served_meals: List[Tuple] = []
+        self._served_meals = None
         self._session_info: Optional[dict] = None
 
-        self._current_session_pronts: Set[str] = set()
+        self._current_session_pronts: Set = set()
 
         try:
             self._spread: SpreadSheet = SpreadSheet()
         except Exception:  # pylint: disable=broad-except
             sys.exit(1)
 
-        self._all_reserves: List[Dict] = []
-        self._filtered_discentes: List[Dict] = []
+        self._all_reserves: List = []
+        self._filtered_discentes: List = []
         self._xls_saved: str = ""
-        self._pront_to_reserve_id_map: Dict[str, int] = {}
+        self._pront_to_reserve_id_map: Dict = {}
         self._snacks: bool = False
 
     def get_spreadsheet(self):
@@ -118,73 +108,135 @@ class SessionManager:
         """Returns the current session meal type."""
         return self._meal_type
 
+    def load_reserves(self):
+        """
+        Loads the reserves for the current session from the database.
+
+        Returns:
+            Optional[List[Dict]]: A list of student reserve information or None if
+                                   the session info cannot be loaded.
+        """
+        if not self._session_info and not self.load_session():
+            return None
+
+        is_snack = self._meal_type.lower() == "lanche"
+
+        reserves = self.reserve_crud.read_filtered(
+            data=self._date, snacks=is_snack, session_id=self._session_id
+        )
+
+        self._all_reserves = []
+        for reserve in reserves:
+            student = self.student_crud.read_one(reserve.student_id)
+            if student:
+                self._all_reserves.append(
+                    {
+                        "Pront": student.pront,
+                        "Nome": student.nome,
+                        "Turma": student.turma,
+                        "Prato": reserve.prato,
+                        "Data": reserve.data,
+                        "id": student.translate_id,
+                        "Hora": reserve.registro_time,
+                        "reserve_id": reserve.id,
+                        "student_id": student.id,
+                    }
+                )
+                self._pront_to_reserve_id_map[student.pront] = reserve.id
+
+        if self._all_reserves is None:
+            return None
+
+        return self.filter_students()
+
     def get_served_registers(self):
         """Returns the set of PRONTs of students served in the current session."""
         return self._current_session_pronts
 
     def filter_students(self):
         """
-        Loads reserves and filters students based on selected classes,
-        including students without reservations if 'SEM RESERVA' is selected.
-        Returns:
-            Optional[List[Dict]]: A list of student information.
-        """
-        return self._filter.filter_students(self._date, self._turmas, self._snacks)
+        Filters the loaded reserves based on the selected classes for the session.
 
-    def create_student(self, student: Tuple[str, str, str, str, str]) -> bool:
+        Returns:
+            List[Dict]: A list of student reserve information filtered by class.
+        """
+        if self._all_reserves is None or self._turmas is None:
+            print(
+                "Error: Required data (self._all_reserves) is not loaded.",
+                file=sys.stderr,
+            )
+            return []
+
+        selected_turmas = set(self._turmas)
+        self._filtered_discentes = []
+
+        reserved = 'SEM RESERVA' not in selected_turmas
+        selected_turmas.discard("SEM RESERVA")
+
+        for student_data in self._all_reserves:
+            turma = student_data.get("Turma")
+            meal = student_data.get('Prato')
+
+            if meal.upper() == "SEM RESERVA" and reserved:
+                continue
+
+            if turma in selected_turmas:
+                self._filtered_discentes.append(student_data)
+
+        return self._filtered_discentes
+
+    def create_student(self, student):
         """
         Marks a student as served in the current session.
 
         Args:
-            student (Tuple): A tuple containing student information:
-                             (PRONT, Nome, Turma, Hora, Refeição).
+            student (Tuple): A tuple containing student information, where the
+                             first element is the student's PRONT.
 
         Returns:
             bool: True if the student was successfully marked as served, False otherwise.
         """
-        pront = student[0]
-        if pront in self._current_session_pronts:
+        if student[0] in self._current_session_pronts:
             return False
 
-        reserve_id = self._pront_to_reserve_id_map.get(pront)
+        reserve_id = self._pront_to_reserve_id_map[student[0]]
 
-        consumption_data = {
-            "student_id": self.student_crud.read_filtered(pront=pront)[0].id,
-            "session_id": self._session_id,
-            "consumption_time": datetime.now().strftime("%H:%M:%S"),
-            "consumed_without_reservation": reserve_id is None,
-            "reserve_id": reserve_id,
-        }
-        self.consumption_crud.create(consumption_data)
+        self.reserve_crud.update(
+            reserve_id,
+            {
+                "registro_time": datetime.now().strftime("%H:%M:%S"),
+                "consumed": True,
+            },
+        )
 
         self._served_meals.append(student)
-        self._current_session_pronts.add(pront)
+        self._current_session_pronts.add(student[0])
         return True
 
-    def delete_student(self, student: Tuple[str, str, str, str, str]) -> bool:
+    def delete_student(self, student):
         """
         Unmarks a student as served in the current session.
 
         Args:
-            student (Tuple): A tuple containing student information:
-                             (PRONT, Nome, Turma, Hora, Refeição).
+            student (Tuple): A tuple containing student information, where the
+                             first element is the student's PRONT.
 
         Returns:
             bool: True if the student was successfully unmarked as served, False otherwise.
         """
-        pront = student[0]
-        if pront not in self._current_session_pronts:
+        if student[0] not in self._current_session_pronts:
             return False
+        reserve_id = self._pront_to_reserve_id_map[student[0]]
 
-        student_record = self.student_crud.read_filtered(pront=pront)[0]
-        consumption = self.consumption_crud.read_filtered(
-            student_id=student_record.id, session_id=self._session_id
+        self.reserve_crud.update(
+            reserve_id,
+            {
+                "consumed": False,
+            },
         )
-        if consumption:
-            self.consumption_crud.delete(consumption[0].id)
 
         self._served_meals.remove(student)
-        self._current_session_pronts.remove(pront)
+        self._current_session_pronts.remove(student[0])
         return True
 
     def load_session(self) -> Optional[dict]:
@@ -212,7 +264,7 @@ class SessionManager:
         if not session_:
             return None
 
-        self._date = session_.date
+        self._date = session_.data
         self._snacks = session_.refeicao == "lanche"
         self._update_session(session_, [])
         return self._session_info
@@ -226,10 +278,10 @@ class SessionManager:
             discentes_ (List[Any]): A list of served students (not currently used).
         """
         self._meal_type = session_.refeicao
-        self._periodo = session_.period
-        self._date = session_.date
-        self._hora = session_.time
-        self._turmas = set(json.loads(session_.groups))
+        self._periodo = session_.periodo
+        self._date = session_.data
+        self._hora = session_.hora
+        self._turmas = json.loads(session_.turmas)
         self._served_meals = discentes_
 
     def get_sheet_path(self):
@@ -238,7 +290,7 @@ class SessionManager:
 
     def get_session_students(self):
         """Returns the list of filtered students for the current session."""
-        return self._filter.get_filtered_students()
+        return self._filtered_discentes
 
     def export_sheet(self):
         """
@@ -283,39 +335,32 @@ class SessionManager:
         """Saves the current session information to the session file."""
         return save_json(self.filename, self._session_info)
 
-    def get_served_students(self) -> List[Tuple[str, str, str, str, str]]:
+    def get_served_students(self):
         """
         Retrieves the list of students marked as served in the current session
         from the database.
         """
-        served_consumptions = self.consumption_crud.read_filtered(
-            session_id=self._session_id
+        reserves = self.reserve_crud.read_filtered(
+            snacks=self._snacks,
+            data=self._date,
+            session_id=self._session_id,
+            consumed=True,
         )
 
-        served_students_data: List[Tuple[str, str, str, str, str]] = []
-        served_pronts: Set[str] = set()
+        self._served_meals = [
+            (r.student.pront, r.student.nome,
+             r.student.turma, r.registro_time, r.prato)
+            for r in reserves
+        ]
+        self._current_session_pronts: Set = {r.student.pront for r in reserves}
 
-        for consumption in served_consumptions:
-            student = self.student_crud.read_one(consumption.student_id)
-            if student:
-                reserve = self.reserve_crud.read_one(
-                    consumption.reserve_id) if consumption.reserve_id else None
-                meal_type = reserve.dish if reserve else "Sem Reserva"
-                served_students_data.append(
-                    (student.pront, student.name, ','.join(t.name for t in student.groups),
-                     consumption.consumption_time, meal_type)
-                )
-                served_pronts.add(student.pront)
-
-        self._served_meals = served_students_data
-        self._current_session_pronts = served_pronts
         return self._served_meals
 
     def get_session_classes(self):
         """Returns the list of classes selected for the current session."""
-        return self._turmas or set()
+        return self._turmas or []
 
-    def set_students(self, served_update: List[Tuple[str, str, str, str, str]]):
+    def set_students(self, served_update):
         """
         Updates the list of served students for the current session.
 
@@ -323,40 +368,27 @@ class SessionManager:
             served_update (List[Tuple]): A list of tuples, where each tuple
                                          contains information about a served student.
         """
-        current_served_pronts: Set = {i[0] for i in self._served_meals}
-        updated_served_pronts: Set = {i[0] for i in served_update}
+        self._current_session_pronts: Set = {
+            i[0] for i in self._served_meals}
 
-        # Handle students who were unmarked as served
-        unmarked_pronts = current_served_pronts.difference(
-            updated_served_pronts)
-        for pront in unmarked_pronts:
-            student = self.student_crud.read_filtered(pront=pront)[0]
-            consumption = self.consumption_crud.read_filtered(
-                student_id=student.id, session_id=self._session_id
+        pront_list: Set = {i[0] for i in served_update}
+
+        reserves_to_update = {
+            self._pront_to_reserve_id_map[p]
+            for p in self._current_session_pronts.difference(pront_list)
+        }
+
+        for reserve_id in reserves_to_update:
+            self.reserve_crud.update(
+                reserve_id,
+                {
+                    "consumed": False,
+                },
             )
-            if consumption:
-                self.consumption_crud.delete(consumption[0].id)
-
-        # Handle students who were marked as served
-        marked_pronts = updated_served_pronts.difference(current_served_pronts)
-        for pront in marked_pronts:
-            student_data = next(
-                item for item in served_update if item[0] == pront)
-            pront, _, _, hora, _ = student_data
-            student = self.student_crud.read_filtered(pront=pront)[0]
-            reserve_id = self._pront_to_reserve_id_map.get(pront)
-            consumption_data = {
-                "student_id": student.id,
-                "session_id": self._session_id,
-                "consumption_time": hora,
-                "consumed_without_reservation": reserve_id is None,
-                "reserve_id": reserve_id,
-            }
-            self.consumption_crud.create(consumption_data)
 
         self._served_meals = served_update
-        self._current_session_pronts = updated_served_pronts
-        self.filter_students()
+        self._current_session_pronts = pront_list
+        self.load_reserves()
 
     def new_session(self, session: SESSION):
         """
@@ -369,35 +401,45 @@ class SessionManager:
             bool: True if the session was created successfully, False otherwise.
         """
         refeicao = session["refeição"].lower()
-        date = session["data"]
-        self._date = date
+        data = session["data"]
+        self._date = data
 
         self._snacks = False
-        reserves = self.reserve_crud.read_filtered(snacks=False, date=date)
+        reserves = self.reserve_crud.read_filtered(snacks=False, data=data)
         if refeicao == "almoço":
             if len(reserves) == 0:
                 return False
         elif refeicao == "lanche":
             self._snacks = True
             reserves = self.reserve_crud.read_filtered(
-                snacks=True, date=date
+                snacks=True, data=data, session_id=None
             )
             if len(reserves) == 0:
                 reserve_snacks(self.student_crud,
-                               self.reserve_crud, date, session['lanche'])
+                               self.reserve_crud, data, session['lanche'])
                 reserves = self.reserve_crud.read_filtered(
-                    snacks=True, date=date
+                    snacks=True, data=data, session_id=None
                 )
 
-        session_data = {
-            "refeicao": refeicao,
-            "period": session["período"],
-            "date": session["data"],
-            "time": session["hora"],
-            "groups": json.dumps(session["turmas"]),
-        }
-        session_ = self.session_crud.create(session_data)
+        session_ = self.session_crud.create(
+            {
+                "refeicao": refeicao,
+                "periodo": session["período"],
+                "data": session["data"],
+                "hora": session["hora"],
+                "turmas": json.dumps(session["turmas"]),
+            }
+        )
         self._session_id = session_.id
+
+        reserves_to_update = []
+
+        for reserve in reserves:
+            reserves_to_update.append(
+                {"id": reserve.id, "session_id": session_.id})
+
+        if reserves_to_update:
+            self.reserve_crud.bulk_update(reserves_to_update)
 
         self._update_session(session_, [])
         self._session_info = {"session_id": session_.id}
@@ -420,7 +462,7 @@ class SessionManager:
         if not session_:
             return None
 
-        session_.groups = json.dumps(classes)
-        self.session_crud.update(session_.id, {"groups": session_.groups})
-        self._turmas = set(classes)
+        session_.turmas = json.dumps(classes)
+        self.session_crud.update(session_.id, {"turmas": session_.turmas})
+        self._turmas = classes
         return self._turmas

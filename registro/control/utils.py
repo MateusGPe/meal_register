@@ -13,21 +13,17 @@ session data.
 import csv
 import ctypes
 import json
+from json import JSONDecodeError
 import os
 import platform
 import re
 import sys
-from json import JSONDecodeError
-from typing import (Any, Callable, Dict, List, Literal, Optional, Tuple,
-                    TypedDict)
+from typing import Any, Callable, List, Literal, Optional, Tuple, TypedDict
 
 from fuzzywuzzy import fuzz
 
 CSIDL_PERSONAL: int = 5
 SHGFP_TYPE_CURRENT: int = 0
-
-TRANSLATE_DICT: Dict[int, int] = str.maketrans("0123456789Xx", "abcdefghijkk")
-REMOVE_IQ: re.Pattern[str] = re.compile(r"[Ii][Qq]\d0+")
 
 SESSION = TypedDict(
     'SESSION',
@@ -39,22 +35,6 @@ SESSION = TypedDict(
         'hora': str,
         'turmas': List[str]
     })
-
-
-def to_code(text: str) -> str:
-    """
-    Translates a given text by removing 'IQ' followed by digits and then
-    applying a translation dictionary.
-
-    Args:
-        text (str): The input string to be translated.
-
-    Returns:
-        str: The translated string.
-    """
-    text = REMOVE_IQ.sub("", text)
-    translated = text.translate(TRANSLATE_DICT)
-    return " ".join(translated)
 
 
 def get_documments_path() -> str:
@@ -243,12 +223,7 @@ TRANSLATE_KEYS = {
     'matrícula iq': 'pront',
     'matrícula': 'pront',
     'prontuário': 'pront',
-    'refeição': 'dish',
-    'nome': 'name',
-    'turma': 'group',
-    'data': 'date',
-    'hora': 'time',
-    'prato': 'dish',
+    'refeição': 'prato'
 }
 
 
@@ -301,7 +276,7 @@ def adjust_keys(input_dict: dict) -> dict:
             if isinstance(value, str):
                 value = value.strip()
 
-            if key in ["name", "dish"]:
+            if key in ["nome", "prato"]:
                 value = " ".join(capitalize(v) for v in value.split(" "))
             elif key == "pront":
                 value = re.sub(r'IQ\d{2}', 'IQ30', value.upper())

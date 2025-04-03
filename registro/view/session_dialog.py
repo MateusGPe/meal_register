@@ -169,7 +169,7 @@ class SessionDialog(tk.Toplevel):
         time_range = (dt.time(11, 30, 00), dt.time(12, 50, 00))
         now = datetime.now().time()
 
-        default_meal = time_range[0] <= now <= time_range[1]
+        default_meal = now >= time_range[0] and now <= time_range[1]
 
         self._meal = ttk.Combobox(
             master=session_group,

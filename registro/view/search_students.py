@@ -20,10 +20,10 @@ import ttkbootstrap as ttk
 from fuzzywuzzy import fuzz
 
 from registro.control.session_manage import REMOVE_IQ, SessionManager
-from registro.control.utils import to_code
+from registro.model.tables import to_code
 
 
-class SearchStudents(ttk.Frame):  # pylint: disable=too-many-ancestors
+class SearchStudents(ttk.Frame):
     """
     A frame for searching and registering students for meals.
 
@@ -133,9 +133,7 @@ class SearchStudents(ttk.Frame):  # pylint: disable=too-many-ancestors
 
         Registers the selected student if one is selected.
         """
-        if self._entry_var.get() != '---':
-            self._entry_var.set('')
-
+        self._entry_var.set('')
         selected = self._tree_view.selection()
         last_pront = None
         if len(selected):
@@ -151,8 +149,6 @@ class SearchStudents(ttk.Frame):  # pylint: disable=too-many-ancestors
                 messagebox.showwarning(
                     message=f'O discente: {last_pront["Nome"]}.\nJá foi registrado!',
                     title='Registro')
-                return
-            self.on_entry_change()
 
     def on_tree_select(self, *_):
         """
@@ -192,16 +188,13 @@ class SearchStudents(ttk.Frame):  # pylint: disable=too-many-ancestors
         Registers the currently selected student in the treeview.
         """
         if self.last_pront:
-            if self._entry_var.get() != '---':
-                self._entry_var.set('')
-
+            self._entry_var.set('')
             if not self.insert_discente(self.last_pront):
                 messagebox.showwarning(
                     message=f'O discente: {self.last_pront["Nome"]}.\nJá foi registrado!',
                     title='Registro')
                 self.last_pront = None
-                return
-            self.on_entry_change()
+                self._entry_var.set('')
 
     def update_data(self, tree: Treeview, register: str):
         """
