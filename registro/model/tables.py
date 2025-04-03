@@ -77,6 +77,7 @@ class Reserve(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     student_id: Mapped[int] = mapped_column(
         ForeignKey("student.id", ondelete="RESTRICT"))
+    #meal: Mapped[Optional[str]] = mapped_column(String)
     dish: Mapped[Optional[str]] = mapped_column(String)
     date: Mapped[str] = mapped_column(String)
     snacks: Mapped[bool] = mapped_column(Boolean, default=False)

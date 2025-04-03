@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from registro.control.utils import to_code
 from registro.model.tables import Group, Reserve, Student
 
-# logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 

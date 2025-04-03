@@ -121,7 +121,7 @@ def import_students_csv(student_crud: CRUD[Student], group_crud: CRUD[Group],
     Args:
         db_session: The SQLAlchemy database session.
         student_crud (CRUD[Students]): CRUD object for interacting with the Student table.
-        group_crud (CRUD[Turma]): CRUD object for interacting with the Group table.
+        group_crud (CRUD[Group]): CRUD object for interacting with the Group table.
         csv_file_path (str): The path to the CSV file containing the student data.
 
     Returns:

@@ -8,7 +8,9 @@ This script imports and calls the main function from the gui module
 to start the graphical user interface.
 """
 
+import logging
 from registro.view.gui import main
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
