@@ -181,9 +181,9 @@ class RegistrationApp(tk.Tk):
             for dis in servidos:
                 self.table.insert_row(values=dis)
             self.table.load_table_data()
-            turmas = self._session.get_session_classes()
+            groups = self._session.get_session_classes()
             for i in self.list_turmas:
-                i[1].set(i[0] in turmas)
+                i[1].set(i[0] in groups)
             self.update_info()
             self.deiconify()
         else:
@@ -307,7 +307,7 @@ class RegistrationApp(tk.Tk):
             return False
 
         self._session.filter_students()
-        self._update_class_checkboxes(result['turmas'])
+        self._update_class_checkboxes(result['groups'])
         self.update_info()
         self.deiconify()
         return True

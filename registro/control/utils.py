@@ -36,7 +36,7 @@ SESSION = TypedDict(
         'período': Literal["Integral", "Matutino", "Vespertino", "Noturno"],
         'data': str,
         'hora': str,
-        'turmas': List[str]
+        'groups': List[str]
     })
 
 def to_code(text: str) -> str:
@@ -241,7 +241,7 @@ TRANSLATE_KEYS = {
     'matrícula iq': 'pront',
     'matrícula': 'pront',
     'prontuário': 'pront',
-    'refeição': 'prato'
+    'refeição': 'dish'
 }
 
 
@@ -275,7 +275,7 @@ def adjust_keys(input_dict: dict) -> dict:
 
     This function processes the input dictionary by converting all string keys to lowercase,
     translating certain keys using a translation dictionary, and performing specific
-    formatting on the values based on their keys. Keys like "nome" and "prato" have their
+    formatting on the values based on their keys. Keys like "nome" and "dish" have their
     values capitalized appropriately, while keys like "pront" have specific patterns
     replaced in their values.
 
@@ -294,7 +294,7 @@ def adjust_keys(input_dict: dict) -> dict:
             if isinstance(value, str):
                 value = value.strip()
 
-            if key in ["nome", "prato"]:
+            if key in ["nome", "dish"]:
                 value = " ".join(capitalize(v) for v in value.split(" "))
             elif key == "pront":
                 value = re.sub(r'IQ\d{2}', 'IQ30', value.upper())

@@ -121,7 +121,7 @@ class SessionDialog(tk.Toplevel):
             "período": self._period.get(),
             "data": self._date_entry.entry.get(),
             "hora": self._time_entry.get(),
-            "turmas": classes_list,
+            "groups": classes_list,
         }
         if self._callback(result):
             self.grab_release()

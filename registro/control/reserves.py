@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from registro.control.generic_crud import CRUD
 from registro.control.utils import adjust_keys
-from registro.model.tables import Reserve, Student, Turma
+from registro.model.tables import Reserve, Student, Group
 
 
 def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
@@ -49,7 +49,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
                     pront = row['pront']
                     nome = row['nome']
                     turma = row['turma']
-                    prato = row['prato']
+                    dish = row['dish']
                     data = row['data']
 
                     if pront not in new_students_data and pront not in existing_students_pronts:
@@ -57,7 +57,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
                             'pront': pront, 'nome': nome, 'turma': turma}
 
                     csv_reserves_data.append({
-                        'pront': pront, 'prato': prato, 'data': data, 'snacks': False,
+                        'pront': pront, 'dish': dish, 'data': data, 'snacks': False,
                         'canceled': False})  # Added 'canceled' field
                 except KeyError as e:
                     print(f"Missing key in row: {row}. Error: {e}")
@@ -78,7 +78,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
             pront = reserve_info['pront']
             if pront in all_students_by_pront:
                 reserves_to_insert.append({
-                    'prato': reserve_info.get('prato'),
+                    'dish': reserve_info.get('dish'),
                     'data': reserve_info['data'],
                     'snacks': False,
                     'canceled': reserve_info['canceled'],
@@ -109,7 +109,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
         return False
 
 
-def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Turma],
+def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
                         csv_file_path: str) -> bool:
     """
     Imports student data from a CSV file into the database, including turma information.
@@ -157,18 +157,18 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Turma],
                 except (TypeError, ValueError) as e:
                     print(f"Error processing row: {row}. Error: {e}")
 
-        # Insert new turmas
+        # Insert new groups
         turmas_to_insert = [{'nome': nome} for nome in new_turmas_nomes]
         if turmas_to_insert:
             turma_crud.bulk_create(turmas_to_insert)
             turma_crud.commit()
 
-        # Fetch all turmas (including the newly created ones)
-        all_turmas_by_name: Dict[str, Turma] = {
+        # Fetch all groups (including the newly created ones)
+        all_turmas_by_name: Dict[str, Group] = {
             turma.nome: turma for turma in turma_crud.read_all()
         }
 
-        # Insert new students and associate them with turmas
+        # Insert new students and associate them with groups
         students_to_insert = []
         with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -189,8 +189,8 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Turma],
 
                         if turma_nome in all_turmas_by_name:
                             turma = all_turmas_by_name[turma_nome]
-                            if turma not in student.turmas:
-                                student.turmas.append(turma)
+                            if turma not in student.groups:
+                                student.groups.append(turma)
 
                 except KeyError as e:
                     print(f"Missing key in row: {row}. Error: {e}")
@@ -205,7 +205,7 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Turma],
             student_crud.commit()
 
         print(
-            f"Successfully imported students and turmas from {csv_file_path}")
+            f"Successfully imported students and groups from {csv_file_path}")
         return True
 
     except FileNotFoundError:
@@ -224,7 +224,7 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Turma],
 
 
 def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
-                   data: str, prato: str) -> bool:
+                   data: str, dish: str) -> bool:
     """
     Reserves a specific snack for all students on a given date.
 
@@ -232,7 +232,7 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
         student_crud (CRUD[Students]): CRUD object for interacting with the Students table.
         reserve_crud (CRUD[Reserve]): CRUD object for interacting with the Reserve table.
         data (str): The date for which to reserve the snack (in 'YYYY-MM-DD' format).
-        prato (str): The name of the snack to reserve.
+        dish (str): The name of the snack to reserve.
 
     Returns:
         bool: True if the snack reservation was successful for all students, False otherwise.
@@ -243,7 +243,7 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
         reserves_to_insert: List[dict] = []
         for student in students:
             reserves_to_insert.append({
-                'prato': prato,
+                'dish': dish,
                 'data': data,
                 'snacks': True,
                 'canceled': False,  # Added 'canceled' field
