@@ -111,12 +111,15 @@ class SyncReserves(Thread):
         if discentes_list:
             if save_csv(discentes_list, "./config/students.csv"):
                 import_students_csv(
-                    self._session.student_crud, './config/students.csv')
+                    self._session.student_crud,
+                    self._session.turma_crud,
+                    './config/students.csv')
             self.error = False
 
         reserves_list = self._session.get_spreadsheet().fetch_sheet_values("DB")
         if reserves_list:
             if save_csv(reserves_list, "./config/reserves.csv"):
                 import_reserves_csv(self._session.student_crud,
-                                    self._session.reserve_crud, './config/reserves.csv')
+                                    self._session.reserve_crud,
+                                    './config/reserves.csv')
             self.error = False or self.error
