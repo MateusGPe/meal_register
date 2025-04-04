@@ -58,7 +58,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 
                     csv_reserves_data.append({
                         'pront': pront, 'dish': dish, 'data': data, 'snacks': False,
-                        'canceled': False})  # Added 'canceled' field
+                        'canceled': False})  
                 except KeyError as e:
                     print(f"Missing key in row: {row}. Error: {e}")
                 except csv.Error as e:

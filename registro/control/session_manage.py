@@ -154,7 +154,7 @@ class SessionManager:
                     "Pront": student.pront,
                     "Nome": student.nome,
                     "Turma": ','.join(t.nome for t in student.groups),
-                    "Prato": reserve.prato,
+                    "Prato": reserve.dish,
                     "Data": reserve.data,
                     "id": to_code(student.pront),
                     "Hora": None,
@@ -442,12 +442,13 @@ class SessionManager:
                     snacks=True, data=data
                 )
 
+        print(session)
         session_data = {
             "refeicao": refeicao,
             "periodo": session["período"],
             "data": session["data"],
             "hora": session["hora"],
-            "turmas": json.dumps(session["turmas"]),
+            "groups": json.dumps(session["groups"]),
         }
         session_ = self.session_crud.create(session_data)
         self._session_id = session_.id
