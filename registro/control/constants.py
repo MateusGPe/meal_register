@@ -1,3 +1,14 @@
+"""
+This module defines constants and configurations used throughout the meal register application.
+
+It includes:
+- File paths for configuration and data files.
+- Google API scopes for accessing spreadsheets and Drive.
+- Data processing utilities such as capitalization exceptions and translation dictionaries.
+- Class and sheet names for integration and data organization.
+- A TypedDict structure for session data representation.
+"""
+
 import re
 from typing import Dict, List, Literal, Set, TypedDict
 
