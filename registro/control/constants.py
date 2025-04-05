@@ -77,3 +77,6 @@ SESSION = TypedDict(
         'hora': str,
         'groups': List[str]
     })
+
+CSIDL_PERSONAL: int = 5
+SHGFP_TYPE_CURRENT: int = 0

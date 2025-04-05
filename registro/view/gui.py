@@ -204,7 +204,7 @@ class RegistrationApp(tk.Tk):
         Returns True if successful, False otherwise.
         """
         self.sync_session()
-        result = export_to_excel(self._session.get_served_registers(),
+        result = export_to_excel(self._session.get_served_students(),
                                  self._session.get_meal_type(),
                                  self._session.get_date(),
                                  self._session.get_time())

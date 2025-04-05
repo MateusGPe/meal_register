@@ -22,9 +22,10 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from fuzzywuzzy import fuzz
 
-from registro.control.constants import (CAPITALIZE_EXCEPTIONS, REMOVE_IQ,
-                                        TRANSLATE_DICT, TRANSLATE_KEYS)
-from registro.control.wip.constants import CSIDL_PERSONAL, SHGFP_TYPE_CURRENT
+from registro.control.constants import (
+    CAPITALIZE_EXCEPTIONS, CSIDL_PERSONAL,
+    REMOVE_IQ, SHGFP_TYPE_CURRENT,
+    TRANSLATE_DICT, TRANSLATE_KEYS)
 
 
 def to_code(text: str) -> str:

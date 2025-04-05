@@ -243,28 +243,23 @@ class SessionDialog(tk.Toplevel):
         """Creates the section containing the action buttons for the dialog."""
         session_buttons = tk.Frame(self)
 
-        button = ttk.Button(master=session_buttons, text="Ok",
-                            command=self.on_okay, bootstyle="success-link")
-        button.pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="Ok",
+                   command=self.on_okay, bootstyle="success-link").pack(side="right", padx=1)
 
-        button = ttk.Button(master=session_buttons, text="Cancelar",
-                            command=self.on_closing, bootstyle="danger-link")
-        button.pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="Cancelar",
+                   command=self.on_closing, bootstyle="danger-link").pack(side="right", padx=1)
 
-        button = ttk.Button(master=session_buttons, text="Limpar",
-                            command=self.on_clear, bootstyle="warning-link")
-        button.pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="Limpar",
+                   command=self.on_clear, bootstyle="warning-link").pack(side="right", padx=1)
 
-        button = ttk.Button(master=session_buttons, text="Integrado",
-                            command=self.on_integral, bootstyle="link")
-        button.pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="Integrado",
+                   command=self.on_integral, bootstyle="link").pack(side="right", padx=1)
 
-        button = ttk.Button(master=session_buttons, text="Inverter",
-                            command=self.on_invert, bootstyle="link")
-        button.pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="Inverter",
+                   command=self.on_invert, bootstyle="link").pack(side="right", padx=1)
 
-        button = ttk.Button(master=session_buttons,
-                            text="Sync", command=self.sync, bootstyle="primary-link")
-        button.pack(side="right", padx=1)
+        ttk.Button(master=session_buttons,
+                   text="Sync", command=self.sync, bootstyle="primary-link"
+                   ).pack(side="right", padx=1)
 
         return session_buttons
