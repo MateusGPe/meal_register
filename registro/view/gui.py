@@ -19,15 +19,14 @@ from typing import List
 import ttkbootstrap as ttk
 from ttkbootstrap.tableview import Tableview
 
-from registro.control.constants import SESSION
+from registro.control.constants import SESSION, SESSION_PATH
 from registro.control.excel_exporter import export_to_excel
 from registro.control.session_manage import SessionManager
 from registro.control.sync_thread import SpreadsheetThread
 from registro.view.search_students import SearchStudents
-from registro.view.session_dialog import (SessionDialog,
-                                          classes_section)
+from registro.view.session_dialog import SessionDialog, classes_section
 
-
+# pylint: disable=too-many-instance-attributes
 class RegistrationApp(tk.Tk):
     """
     The main application class for the meal registration system.
@@ -73,7 +72,7 @@ class RegistrationApp(tk.Tk):
 
     def _initialize_session_manager(self) -> SessionManager:
         """Initializes and returns the SessionManager instance."""
-        return SessionManager("./config/session.json")
+        return SessionManager()
 
     def _configure_style(self):
         """Configures the ttkbootstrap style for the application."""
@@ -110,8 +109,6 @@ class RegistrationApp(tk.Tk):
             coldata=coldata,
             autofit=True,
             searchable=True,
-            paginated=True,
-            pagesize=25,
             bootstyle='secondary',
             stripecolor=(self.colors.light, None),
         )
@@ -186,17 +183,20 @@ class RegistrationApp(tk.Tk):
         for (_, _, cbtn) in self.list_turmas:
             cbtn.configure(command=self.classes_callback)
         classes_widget.pack(padx=10, pady=10)
+
+        buttons_frame = ttk.Frame(master=session_frame)
         ttk.Button(
-            master=session_frame,
+            master=buttons_frame,
             text="Salvar e encerrar...",
             command=self.export_and_clear,
             bootstyle="danger",
-        ).pack(padx=10, pady=10)
+        ).pack(padx=10, pady=10, side="left")
         ttk.Button(
-            master=session_frame,
+            master=buttons_frame,
             text="Salvar (xlsx)...",
             command=self.export_xlsx
-        ).pack(padx=10, pady=10)
+        ).pack(padx=10, pady=10, side="right")
+        buttons_frame.pack(padx=10, pady=10)
         session_frame.pack(fill="both", expand=True)
         return session_frame
 
@@ -255,6 +255,14 @@ class RegistrationApp(tk.Tk):
             messagebox.showinfo(
                 message=f"O arquivo foi salvo em Documentos:\n{result}",
                 title='Registro', parent=self)
+        else:
+            res = messagebox.Message(
+                title='Registro', message='Erro ao salvar o arquivo.\n'
+                'Deseja encerrar a sessão?', icon=messagebox.ERROR,
+                type=messagebox.YESNO).show()
+
+            if res == messagebox.YES:
+                return 'Discard'
         return result
 
     def sync_session(self):
@@ -304,7 +312,7 @@ class RegistrationApp(tk.Tk):
         If an error occurs during file removal, displays an error message.
         """
         try:
-            os.remove(os.path.abspath("./config/session.json"))
+            os.remove(os.path.abspath(SESSION_PATH))
         except OSError as e:
             print(f"Error removing session file: {e}")
             messagebox.showerror(

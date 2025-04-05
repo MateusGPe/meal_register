@@ -51,13 +51,12 @@ class MealSessionHandler:
         Args:
             database_session: The SQLAlchemy session used for database operations.
         """
-        self.database_session = database_session
         self.student_crud: CRUD[Student] = CRUD[Student](
-            self.database_session, Student)
-        self.reserve_crud: CRUD[Reserve] = CRUD[Reserve](
-            self.database_session, Reserve)
+            database_session, Student)
+        # self.reserve_crud: CRUD[Reserve] = CRUD[Reserve](
+        #     database_session, Reserve)
         self.consumption_crud: CRUD[Consumption] = CRUD[Consumption](
-            self.database_session, Consumption)
+            database_session, Consumption)
         self._session_id: Optional[int] = None
         self._date: Optional[str] = None
         self._meal_type: Optional[str] = None
@@ -66,7 +65,6 @@ class MealSessionHandler:
         self._current_session_pronts: Set[str] = set()
         self._filtered_discentes: List[Dict] = []
         self._pront_to_reserve_id_map: Dict[str, int] = {}
-        self._snacks: bool = False
 
     def set_session_info(self, session_id: Optional[int], date: Optional[str],
                          meal_type: Optional[str], turmas: Optional[List[str]]):
@@ -83,7 +81,6 @@ class MealSessionHandler:
         self._date = date
         self._meal_type = meal_type
         self._turmas = turmas
-        self._snacks = self._meal_type.lower() == "lanche" if self._meal_type else False
 
     def get_served_registers(self):
         """
@@ -138,7 +135,8 @@ class MealSessionHandler:
         if 'SEM RESERVA' in selected_classes_with_reserve:
             selected_classes_with_reserve.discard('SEM RESERVA')
 
-        results = self.database_session.query(
+        results = self.student_crud.get_session(
+        ).query(
             Student.pront,
             Student.nome,
             Group.nome,
@@ -153,28 +151,29 @@ class MealSessionHandler:
         ).all()
 
         processed_students = {}
-        for pront, nome, turma, dish, data, student_id, reserve_id in results:
+        for student_item in results:
+            pront = student_item[0]
             if pront not in processed_students:
                 processed_students[pront] = {
                     "Pront": pront,
-                    "Nome": nome,
-                    "Turma": [turma],
-                    "Prato": dish,
-                    "Data": data,
+                    "Nome": student_item[1],
+                    "Turma": [student_item[2]],
+                    "Prato": student_item[3],
+                    "Data": student_item[4],
                     "id": to_code(pront),
                     "Hora": None,
-                    "reserve_id": reserve_id,
-                    "student_id": student_id,
+                    "reserve_id": student_item[6],
+                    "student_id": student_item[5],
                 }
                 reserved_pronts.add(pront)
-                self._pront_to_reserve_id_map[pront] = reserve_id
+                self._pront_to_reserve_id_map[pront] = student_item[6]
             else:
-                processed_students[pront]["Turma"].append(turma)
+                processed_students[pront]["Turma"].append(student_item[2])
                 if processed_students[pront]["reserve_id"] is None:
-                    processed_students[pront]["reserve_id"] = reserve_id
+                    processed_students[pront]["reserve_id"] = student_item[6]
 
                 if processed_students[pront]["Prato"] == "Sem Reserva":
-                    processed_students[pront]["Prato"] = dish
+                    processed_students[pront]["Prato"] = student_item[3]
 
         for student_info in processed_students.values():
             student_info["Turma"] = ','.join(
@@ -192,7 +191,7 @@ class MealSessionHandler:
             reserved_pronts (Set[str]): The set of PRONTs of students with reservations.
             selected_turmas (Set[str]): The set of selected class names.
         """
-        results = self.database_session.query(
+        results = self.student_crud.get_session().query(
             Student.pront,
             Student.nome,
             Group.nome,
@@ -307,21 +306,39 @@ class MealSessionHandler:
         if self._session_id is None:
             return []
 
-        served_consumptions = self.consumption_crud.read_filtered(
+        served_consumptions: List[Consumption] = self.consumption_crud.read_filtered(
             session_id=self._session_id
         )
+
+        if not served_consumptions:
+            self._served_meals = []
+            self._current_session_pronts = set()
+            return self._served_meals
+
+        student_ids: Set[int] = {consumption.student_id for consumption in served_consumptions}
+        reserve_ids: Set[int] = {
+            consumption.reserve_id for consumption in served_consumptions
+            if consumption.reserve_id is not None}
+
+        students: List[Student] = self.student_crud.get_session().query(Student).filter(
+            Student.id.in_(list(student_ids)))
+
+        reserves: List[Reserve] = self.student_crud.get_session().query(Reserve).filter(
+            Reserve.id.in_(list(reserve_ids))) if reserve_ids else []
+
+        student_map: Dict[int, Student] = {student.id: student for student in students}
+        reserve_map: Dict[int, Reserve] = {reserve.id: reserve for reserve in reserves}
 
         served_students_data: List[Tuple[str, str, str, str, str]] = []
         served_pronts: Set[str] = set()
 
         for consumption in served_consumptions:
-            student = self.student_crud.read_one(consumption.student_id)
+            student = student_map.get(consumption.student_id)
             if student:
-                reserve = self.reserve_crud.read_one(
-                    consumption.reserve_id) if consumption.reserve_id else None
+                reserve = reserve_map.get(consumption.reserve_id)
                 meal_type = reserve.dish if reserve else "Sem Reserva"
                 served_students_data.append(
-                    (student.pront, student.nome, ','.join(t.nome for t in student.groups),
+                    (student.pront, student.nome, ','.join(t.nome for t in student.groups if t),
                      consumption.consumption_time, meal_type)
                 )
                 served_pronts.add(student.pront)
@@ -348,7 +365,7 @@ class MealSessionHandler:
         unmarked_pronts = current_served_pronts.difference(
             updated_served_pronts)
         if unmarked_pronts:
-            self.database_session.execute(
+            self.student_crud.get_session().execute(
                 delete(Consumption).where(
                     Consumption.session_id == self._session_id,
                     Consumption.student_id.in_(
@@ -357,7 +374,7 @@ class MealSessionHandler:
                     )
                 )
             )
-            self.database_session.commit()
+            self.student_crud.get_session().commit()
 
         # Handle students who were marked as served
         marked_pronts = updated_served_pronts.difference(current_served_pronts)
@@ -378,10 +395,10 @@ class MealSessionHandler:
                 })
 
         if consumption_data_to_insert:
-            self.database_session.execute(
+            self.student_crud.get_session().execute(
                 insert(Consumption).values(consumption_data_to_insert)
             )
-            self.database_session.commit()
+            self.student_crud.get_session().commit()
 
         self._served_meals = served_update
         self._current_session_pronts = updated_served_pronts

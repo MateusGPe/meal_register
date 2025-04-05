@@ -15,12 +15,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from registro.control.constants import DATABASE_URL
+from registro.control.constants import DATABASE_URL, SESSION_PATH
 from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks
 from registro.control.sync_session import SpreadSheet
 from registro.control.utils import load_json, save_json
-from registro.model.tables import Base, Group, Reserve, Session, Student
+from registro.model.tables import Base, Reserve, Session, Student
 
 
 class SessionMetadataManager:
@@ -29,36 +29,29 @@ class SessionMetadataManager:
     session information and interacting with the Session and Group models.
     """
 
-    def __init__(self, fn):
+    def __init__(self):
         """
         Initializes the SessionMetadataManager.
 
         Args:
             fn (str): The filename for storing session information.
         """
-        self.filename = fn
-        self.engine = create_engine(DATABASE_URL)
-        Base.metadata.create_all(self.engine)
+        engine = create_engine(DATABASE_URL)
+        Base.metadata.create_all(engine)
 
-        session_local = sessionmaker(
-            autocommit=False, autoflush=False, bind=self.engine)
-
-        self.database_session = session_local()
+        self.database_session = sessionmaker(
+            autocommit=False, autoflush=False, bind=engine)()
 
         self.session_crud: CRUD[Session] = CRUD[Session](
             self.database_session, Session)
 
-        self.turma_crud: CRUD[Group] = CRUD[Group](
-            self.database_session, Group)
-
         self._session_id: Optional[int] = None
-        self._periodo: Optional[str] = None
+        #self._periodo: Optional[str] = None
         self._hora: Optional[str] = None
         self._turmas: Optional[List[str]] = None
         self._date: Optional[str] = None
         self._meal_type: Optional[str] = None
 
-        self._session_info: Optional[dict] = None
         self._spread: Optional[SpreadSheet] = None
 
     def get_spreadsheet(self):
@@ -74,7 +67,8 @@ class SessionMetadataManager:
         if self._spread is None:
             try:
                 self._spread = SpreadSheet()
-            except Exception:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
+                print(f"Error initializing SpreadSheet {type(e).__name__}: {e}")
                 sys.exit(1)
         return self._spread
 
@@ -113,12 +107,12 @@ class SessionMetadataManager:
             Optional[dict]: A dictionary containing the loaded session information,
                             or None if the file cannot be loaded or the session ID is invalid.
         """
-        self._session_info = load_json(self.filename)
+        _session_info = load_json(SESSION_PATH)
 
-        if self._session_info is None:
+        if _session_info is None:
             return None
 
-        self._session_id = self._session_info.get("session_id", -1)
+        self._session_id = _session_info.get("session_id", -1)
 
         if self._session_id == -1:
             self._session_id = None
@@ -132,7 +126,7 @@ class SessionMetadataManager:
         self._date = session_.data
         self._meal_type = session_.refeicao
         self._update_session(session_)
-        return self._session_info
+        return _session_info
 
     def _update_session(self, session_: Session):
         """
@@ -142,7 +136,7 @@ class SessionMetadataManager:
             session_ (Session): The Session object retrieved from the database.
         """
         self._meal_type = session_.refeicao
-        self._periodo = session_.periodo
+        #self._periodo = session_.periodo
         self._date = session_.data
         self._hora = session_.hora
         self._turmas = json.loads(session_.groups)
@@ -154,7 +148,7 @@ class SessionMetadataManager:
         Returns:
             bool: True if the session information was saved successfully, False otherwise.
         """
-        return save_json(self.filename, self._session_info)
+        return save_json(SESSION_PATH, {"session_id": self._session_id})
 
     def get_session_classes(self):
         """
@@ -230,7 +224,6 @@ class SessionMetadataManager:
         self._session_id = session_.id
 
         self._update_session(session_)
-        self._session_info = {"session_id": session_.id}
         self.save_session()
         return True
 

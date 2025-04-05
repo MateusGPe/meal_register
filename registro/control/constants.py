@@ -18,6 +18,7 @@ RESERVES_CSV_PATH: str = "./config/reserves.csv"
 SPREADSHEET_ID_JSON: str = "./config/spreadsheet.json"
 STUDENTS_CSV_PATH: str = "./config/students.csv"
 TOKEN_PATH: str = "./config/token.json"
+SESSION_PATH: str = "./config/session.json"
 
 SCOPES: List[str] = [
     'https://www.googleapis.com/auth/spreadsheets',
@@ -76,3 +77,5 @@ SESSION = TypedDict(
 
 CSIDL_PERSONAL: int = 5
 SHGFP_TYPE_CURRENT: int = 0
+
+EXPORT_HEADER: List[str] = ["Matrícula", "Data", "Nome", "Turma", "Refeição", "Hora"]

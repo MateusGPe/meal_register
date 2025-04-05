@@ -16,7 +16,7 @@ from typing import List
 
 import ttkbootstrap as ttk
 
-from registro.control.constants import ANYTHING, INTEGRATE_CLASSES, SESSION
+from registro.control.constants import ANYTHING, INTEGRATE_CLASSES
 from registro.control.sync_thread import SyncReserves
 from registro.control.utils import capitalize, load_json, save_json
 
@@ -52,7 +52,7 @@ def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, t
         chk.append((t, check_var, check_btn))
     return (chk, rb_group)
 
-
+# pylint: disable=too-many-instance-attributes
 class SessionDialog(tk.Toplevel):
     """A dialog window for creating a new meal serving session."""
 
@@ -120,19 +120,17 @@ class SessionDialog(tk.Toplevel):
             self._lanche_set.add(capitalize(snack))
             save_json('./config/lanches.json', list(self._lanche_set))
 
-        result: SESSION = {
+        if self._callback({
             "refeição": self._meal.get(),
             "lanche": self._snack.get(),
-            "período": self._period.get(),
+            "período": '', #self._period.get(),
             "data": self._date_entry.entry.get(),
             "hora": self._time_entry.get(),
             "groups": classes_list,
-        }
-        if self._callback(result):
+        }):
             self.grab_release()
             self.destroy()
         else:
-            self.__parent.focus_force()
             messagebox.showinfo(
                 message='Nenhuma reserva foi feita.\nTente fazer o download.', title='Registro')
 
@@ -162,17 +160,17 @@ class SessionDialog(tk.Toplevel):
         session_group.columnconfigure(2, weight=0)
         session_group.rowconfigure((0, 1, 2, 3), weight=1)
 
-        label = ttk.Label(master=session_group, text="Horario")
-        label.grid(row=0, column=0, sticky="news", padx=3, pady=3)
+        ttk.Label(master=session_group, text="Horario").grid(
+            row=0, column=0, sticky="news", padx=3, pady=3)
 
-        label = ttk.Label(master=session_group, text="Refeição")
-        label.grid(row=1, column=0, sticky="news", padx=3, pady=3)
+        ttk.Label(master=session_group, text="Refeição").grid(
+            row=1, column=0, sticky="news", padx=3, pady=3)
 
-        label = ttk.Label(master=session_group, text="Lanche")
-        label.grid(row=2, column=0, sticky="news", padx=3, pady=3)
+        ttk.Label(master=session_group, text="Lanche").grid(
+            row=2, column=0, sticky="news", padx=3, pady=3)
 
-        label = ttk.Label(master=session_group, text="Período")
-        label.grid(row=3, column=0, sticky="news", padx=3, pady=3)
+        # ttk.Label(master=session_group, text="Período").grid(
+        #     row=3, column=0, sticky="news", padx=3, pady=3)
 
         self._time_entry = ttk.Entry(session_group)
         self._time_entry.insert(0, datetime.now().strftime("%H:%M"))
@@ -217,14 +215,14 @@ class SessionDialog(tk.Toplevel):
         self._snack.grid(row=2, column=1, columnspan=2,
                          sticky="news", padx=3, pady=3)
 
-        self._period = ttk.Combobox(
-            master=session_group,
-            text="Integral",
-            values=["Integral", "Matutino", "Vespertino", "Noturno"],
-        )
-        self._period.current(0)
-        self._period.grid(row=3, column=1, columnspan=2,
-                          sticky="news", padx=3, pady=3)
+        # self._period = ttk.Combobox(
+        #     master=session_group,
+        #     text="Integral",
+        #     values=["Integral", "Matutino", "Vespertino", "Noturno"],
+        # )
+        # self._period.current(0)
+        # self._period.grid(row=3, column=1, columnspan=2,
+        #                   sticky="news", padx=3, pady=3)
 
         return session_group
 

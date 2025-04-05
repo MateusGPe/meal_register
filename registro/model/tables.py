@@ -48,8 +48,8 @@ class Student(Base):
     __tablename__ = "students"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    pront: Mapped[str] = mapped_column(String, unique=True)
-    nome: Mapped[str] = mapped_column(String)
+    pront: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    nome: Mapped[str] = mapped_column(String, nullable=False)
 
     groups: Mapped[List["Group"]] = relationship(
         secondary=student_group_association,

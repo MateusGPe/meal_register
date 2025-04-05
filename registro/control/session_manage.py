@@ -18,14 +18,14 @@ class SessionManager:
     and SessionMetadataManager.
     """
 
-    def __init__(self, fn):
+    def __init__(self):
         """
         Initializes the SessionManager.
 
         Args:
             fn (str): The filename for storing session information.
         """
-        self.metadata_manager = SessionMetadataManager(fn)
+        self.metadata_manager = SessionMetadataManager()
         self.meal_handler = MealSessionHandler(
             self.metadata_manager.database_session)
         self.student_crud: CRUD[Student] = CRUD[Student](

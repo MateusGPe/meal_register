@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple
 
 import xlsxwriter
 
+from registro.control.constants import EXPORT_HEADER
 from registro.control.utils import get_documments_path
 
 
@@ -38,30 +39,26 @@ def export_to_excel(
 
     try:
         # Sanitize filename components
-        safe_meal_type = meal_type.replace(" ", "_").lower()
-        safe_date = session_date.replace('/', '-')
-        safe_time = session_time.replace(':', '.')
-        base_filename = f"{safe_meal_type}_{safe_date}_{safe_time}.xlsx"
+        safe_date_time = f"{session_date.replace('/', '-')} {session_time.replace(':', '.')}"
 
         # Ensure the documents directory exists
         docs_path = get_documments_path()
         os.makedirs(docs_path, exist_ok=True)  # Create if it doesn't exist
 
-        last_exported_path = os.path.join(docs_path, base_filename)
+        last_exported_path = os.path.join(
+            docs_path, f"{meal_type.lower()} {safe_date_time}.xlsx")
 
         workbook = xlsxwriter.Workbook(last_exported_path)
         # Use a slightly shorter name for the worksheet if filename is too long
-        worksheet_name = f"{meal_type} {safe_date} {safe_time}"[
+        worksheet_name = f"{meal_type} {safe_date_time}"[
             :31]  # Excel limit
         worksheet = workbook.add_worksheet(worksheet_name)
 
-        # Define header
-        header = ["Matrícula", "Data", "Nome", "Turma", "Refeição", "Hora"]
         # Optional: Add formatting for header
         header_format = workbook.add_format({'bold': True})
 
         # Write header
-        for hcol, item in enumerate(header):
+        for hcol, item in enumerate(EXPORT_HEADER):
             # Use row 0 for header
             worksheet.write(0, hcol, item, header_format)
 
@@ -70,15 +67,13 @@ def export_to_excel(
         for row_idx, item in enumerate(served_meals_data, start=1):
             # Ensure item has the expected number of elements
             if len(item) == 5:  # (PRONT, Nome, Turma, HoraConsumo, Refeição/Prato)
-                pront, nome, turma, hora, refeicao = item
-                worksheet.write(row_idx, 0, pront)      # Matrícula
-                # Data (Session Date)
+                worksheet.write(row_idx, 0, item[0])      # Matrícula
                 worksheet.write(row_idx, 1, session_date)
-                worksheet.write(row_idx, 2, nome)        # Nome
-                worksheet.write(row_idx, 3, turma)       # Turma
-                worksheet.write(row_idx, 4, refeicao)    # Refeição
+                worksheet.write(row_idx, 2, item[1])        # Nome
+                worksheet.write(row_idx, 3, item[2])       # Turma
+                worksheet.write(row_idx, 4, item[4])    # Refeição
                 # Hora (Consumption Time)
-                worksheet.write(row_idx, 5, hora)
+                worksheet.write(row_idx, 5, item[3])
             else:
                 print(
                     f"Warning: Skipping row {row_idx} due to unexpected data format: {item}")
