@@ -7,12 +7,10 @@ reserves, tracking served students, and exporting session data.
 """
 
 import json
-import os
 import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import xlsxwriter
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -20,8 +18,7 @@ from registro.control.constants import DATABASE_URL, SESSION
 from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks
 from registro.control.sync_session import SpreadSheet
-from registro.control.utils import (get_documments_path, load_json,
-                                    save_json, to_code)
+from registro.control.utils import load_json, save_json, to_code
 from registro.model.tables import (Base, Consumption, Group, Reserve, Session,
                                    Student)
 
@@ -82,7 +79,6 @@ class SessionManager:
 
         self._all_reserves: List[Dict] = []
         self._filtered_discentes: List[Dict] = []
-        self._xls_saved: str = ""
         self._pront_to_reserve_id_map: Dict[str, int] = {}
         self._snacks: bool = False
 
@@ -273,52 +269,9 @@ class SessionManager:
         self._turmas = json.loads(session_.groups)
         self._served_meals = discentes_
 
-    def get_sheet_path(self):
-        """Returns the path to the exported spreadsheet."""
-        return self._xls_saved
-
     def get_session_students(self):
         """Returns the list of filtered students for the current session."""
         return self._filtered_discentes
-
-    def export_sheet(self):
-        """
-        Exports the served students data to an Excel spreadsheet.
-
-        Returns:
-            bool: True if the export was successful, False otherwise.
-        """
-        self.save_session()
-        try:
-            name = f"{self._meal_type} {str(self._date.replace(
-                '/', '-'))} {str(self._hora.replace(':', '.'))}"
-
-            self._xls_saved = os.path.join(get_documments_path(), name+'.xlsx')
-
-            workbook = xlsxwriter.Workbook(self._xls_saved)
-            worksheet = workbook.add_worksheet(name)
-
-            header = ["Matrícula", "Data", "Nome", "Turma", "Refeição", "Hora"]
-            row = 0
-
-            for hcol, item in enumerate(header):
-                worksheet.write(row, hcol, item)
-
-            for item in self._served_meals:
-                row += 1
-                worksheet.write(row, 0, item[0])
-                worksheet.write(row, 1, self._date)
-                worksheet.write(row, 2, item[1])
-                worksheet.write(row, 3, item[2])
-                worksheet.write(row, 4, item[4])
-                worksheet.write(row, 5, item[3])
-
-        except (IOError, ValueError) as e:
-            print(f"Error: {e}")
-            return False
-        workbook.close()
-
-        return True
 
     def save_session(self) -> bool:
         """Saves the current session information to the session file."""

@@ -210,7 +210,7 @@ class RegistrationApp(tk.Tk):
                                  self._session.get_time())
         if result:
             messagebox.showinfo(
-                message=f"O arquivo foi salvo em Documentos:\n{self._session.get_sheet_path()}",
+                message=f"O arquivo foi salvo em Documentos:\n{result}",
                 title='Registro', parent=self)
         return result
 
