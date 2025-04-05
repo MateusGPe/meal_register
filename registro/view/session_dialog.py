@@ -16,9 +16,9 @@ from typing import List
 
 import ttkbootstrap as ttk
 
-from registro.control.session_manage import ANYTHING, INTEGRATE_CLASSES
+from registro.control.constants import ANYTHING, INTEGRATE_CLASSES, SESSION
 from registro.control.sync_thread import SyncReserves
-from registro.control.utils import SESSION, capitalize, load_json, save_json
+from registro.control.utils import capitalize, load_json, save_json
 
 logger = logging.getLogger(__name__)
 

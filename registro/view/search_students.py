@@ -19,7 +19,8 @@ from typing import List
 import ttkbootstrap as ttk
 from fuzzywuzzy import fuzz
 
-from registro.control.session_manage import REMOVE_IQ, SessionManager
+from registro.control.constants import REMOVE_IQ
+from registro.control.session_manage import SessionManager
 from registro.control.utils import to_code
 
 

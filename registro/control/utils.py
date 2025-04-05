@@ -13,31 +13,19 @@ session data.
 import csv
 import ctypes
 import json
-from json import JSONDecodeError
 import os
 import platform
 import re
 import sys
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, TypedDict
+from json import JSONDecodeError
+from typing import Any, Callable, List, Optional, Tuple
 
 from fuzzywuzzy import fuzz
 
-CSIDL_PERSONAL: int = 5
-SHGFP_TYPE_CURRENT: int = 0
+from registro.control.constants import (CAPITALIZE_EXCEPTIONS, REMOVE_IQ,
+                                        TRANSLATE_DICT, TRANSLATE_KEYS)
+from registro.control.wip.constants import CSIDL_PERSONAL, SHGFP_TYPE_CURRENT
 
-TRANSLATE_DICT: Dict[int, int] = str.maketrans("0123456789Xx", "abcdefghijkk")
-REMOVE_IQ: re.Pattern[str] = re.compile(r"[Ii][Qq]\d0+")
-
-SESSION = TypedDict(
-    'SESSION',
-    {
-        'refeição': Literal["Lanche", "Almoço"],
-        'lanche': str,
-        'período': Literal["Integral", "Matutino", "Vespertino", "Noturno"],
-        'data': str,
-        'hora': str,
-        'groups': List[str]
-    })
 
 def to_code(text: str) -> str:
     """
@@ -223,26 +211,6 @@ def find_best_matching_pair(target_pair: Tuple, vector_of_pairs: List[Tuple],
             best_match = pair
 
     return best_match, highest_score
-
-
-CAPITALIZE_EXCEPTIONS = {
-    "a", "o",
-    "as", "os",
-    "de", "dos",
-    "das", "do",
-    "da", "e",
-    "é", "com",
-    "sem", "ou",
-    "para", "por",
-    "no", "na",
-    "nos", "nas"}
-
-TRANSLATE_KEYS = {
-    'matrícula iq': 'pront',
-    'matrícula': 'pront',
-    'prontuário': 'pront',
-    'refeição': 'dish'
-}
 
 
 def capitalize(text: str) -> str:

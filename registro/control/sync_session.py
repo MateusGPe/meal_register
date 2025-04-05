@@ -14,6 +14,7 @@ import gspread
 from google.oauth2.credentials import Credentials
 from gspread.exceptions import APIError, WorksheetNotFound, SpreadsheetNotFound
 
+from registro.control.constants import SPREADSHEET_ID_JSON
 from registro.control.google_creds import GrantAccess
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class SpreadSheet:
     client: gspread.Client
     configuration: dict
 
-    def __init__(self, config_file: str = "./config/spreadsheet.json"):
+    def __init__(self, config_file: str = SPREADSHEET_ID_JSON):
         """
         Initializes the SpreadSheet object.
 
@@ -51,7 +52,7 @@ class SpreadSheet:
         Args:
             config_file (str, optional): Path to the JSON configuration file
                 containing the Google Spreadsheet key.
-                Defaults to "./config/spreadsheet.json".
+                Defaults to SPREADSHEET_ID_JSON.
         """
         try:
             self.credentials = GrantAccess().reflesh_token().get_credentials()

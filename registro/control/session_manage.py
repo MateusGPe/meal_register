@@ -8,7 +8,6 @@ reserves, tracking served students, and exporting session data.
 
 import json
 import os
-import re
 import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -17,29 +16,14 @@ import xlsxwriter
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from registro.control.constants import DATABASE_URL, SESSION
 from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks
 from registro.control.sync_session import SpreadSheet
-from registro.control.utils import (SESSION, get_documments_path, load_json,
+from registro.control.utils import (get_documments_path, load_json,
                                     save_json, to_code)
-from registro.model.tables import Base, Reserve, Session, Student, Consumption, Group
-
-TRANSLATE_DICT = str.maketrans("0123456789Xx", "abcdefghijkk")
-REMOVE_IQ = re.compile(r"[Ii][Qq]\d0+")
-
-INTEGRATE_CLASSES = [
-    "1º A - MAC",
-    "2º A - MAC",
-    "1º A - MEC",
-    "1º B - MEC",
-    "2º A - MEC",
-    "2º B - MEC",
-    "3º A - MEC",
-    "3º B - MEC",
-]
-OTHERS = ["SEM RESERVA"]
-
-ANYTHING = INTEGRATE_CLASSES + OTHERS
+from registro.model.tables import (Base, Consumption, Group, Reserve, Session,
+                                   Student)
 
 
 class SessionManager:
@@ -56,7 +40,7 @@ class SessionManager:
             fn (str): The filename for storing session information.
         """
         self.filename = fn
-        self.engine = create_engine("sqlite:///./config/registro.db")
+        self.engine = create_engine(DATABASE_URL)
         Base.metadata.create_all(self.engine)
 
         session_local = sessionmaker(
@@ -114,6 +98,10 @@ class SessionManager:
         """Returns the current session meal type."""
         return self._meal_type
 
+    def get_time(self):
+        """Returns the current session time."""
+        return self._hora
+
     def get_served_registers(self):
         """Returns the set of PRONTs of students served in the current session."""
         return self._current_session_pronts
@@ -126,7 +114,7 @@ class SessionManager:
             Optional[List[Dict]]: A list of student information.
         """
         if (not self._session_info and not self.load_session()
-                ) or self._turmas is None:
+            ) or self._turmas is None:
             return None
 
         is_snack = self._meal_type.lower() == "lanche"
@@ -353,7 +341,7 @@ class SessionManager:
             if student:
                 reserve = self.reserve_crud.read_one(
                     consumption.reserve_id) if consumption.reserve_id else None
-                meal_type = reserve.prato if reserve else "Sem Reserva"
+                meal_type = reserve.dish if reserve else "Sem Reserva"
                 served_students_data.append(
                     (student.pront, student.nome, ','.join(t.nome for t in student.groups),
                      consumption.consumption_time, meal_type)

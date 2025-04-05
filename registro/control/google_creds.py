@@ -21,10 +21,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive'
-]
+from registro.control.constants import CREDENTIALS_PATH, SCOPES, TOKEN_PATH
 
 
 class GrantAccess:
@@ -42,8 +39,8 @@ class GrantAccess:
         _token_path (str): The path to the token file containing the access token.
     """
 
-    def __init__(self: Self, credentials_path: str = "./config/credentials.json",
-                 token_path: str = "./config/token.json"):
+    def __init__(self: Self, credentials_path: str = CREDENTIALS_PATH,
+                 token_path: str = TOKEN_PATH):
         """
         Initializes the GrantAccess object.
 

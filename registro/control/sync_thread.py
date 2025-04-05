@@ -8,6 +8,8 @@ and importing reserves and students from a spreadsheet.
 
 from threading import Thread
 
+from registro.control.constants import (RESERVES_CSV_PATH, RESERVES_SHEET_NAME,
+                                        STUDENTS_CSV_PATH, STUDENTS_SHEET_NAME)
 from registro.control.reserves import import_reserves_csv, import_students_csv
 from registro.control.session_manage import SessionManager
 from registro.control.utils import save_csv
@@ -107,19 +109,21 @@ class SyncReserves(Thread):
         from the "DB" sheet, saves it to a CSV, and imports it into the
         reserves table. Sets the 'error' attribute to indicate success.
         """
-        discentes_list = self._session.get_spreadsheet().fetch_sheet_values("Discentes")
+        discentes_list = self._session.get_spreadsheet(
+        ).fetch_sheet_values(STUDENTS_SHEET_NAME)
         if discentes_list:
-            if save_csv(discentes_list, "./config/students.csv"):
+            if save_csv(discentes_list, STUDENTS_CSV_PATH):
                 import_students_csv(
                     self._session.student_crud,
                     self._session.turma_crud,
-                    './config/students.csv')
+                    STUDENTS_CSV_PATH)
             self.error = False
 
-        reserves_list = self._session.get_spreadsheet().fetch_sheet_values("DB")
+        reserves_list = self._session.get_spreadsheet(
+        ).fetch_sheet_values(RESERVES_SHEET_NAME)
         if reserves_list:
-            if save_csv(reserves_list, "./config/reserves.csv"):
+            if save_csv(reserves_list, RESERVES_CSV_PATH):
                 import_reserves_csv(self._session.student_crud,
                                     self._session.reserve_crud,
-                                    './config/reserves.csv')
+                                    RESERVES_CSV_PATH)
             self.error = False or self.error
