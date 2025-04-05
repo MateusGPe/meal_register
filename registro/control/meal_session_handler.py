@@ -1,6 +1,32 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
 
+"""
+meal_session_handler.py
+
+This module defines the `MealSessionHandler` class, which manages operations related to 
+students, reservations, and meal consumption within a meal serving session. It provides 
+methods to handle session information, filter students based on reservations and classes, 
+mark students as served, and retrieve session-related data.
+
+Classes:
+    - MealSessionHandler: Handles the core logic for managing meal sessions, including 
+      filtering students, tracking served meals, and interacting with the database.
+
+Dependencies:
+    - datetime: For handling date and time operations.
+    - typing: For type annotations.
+    - sqlalchemy: For database operations.
+    - registro.control.generic_crud: Provides generic CRUD operations.
+    - registro.control.utils: Utility functions for data processing.
+    - registro.model.tables: Database table models for `Consumption`, `Group`, `Reserve`, 
+      and `Student`.
+
+Usage:
+    The `MealSessionHandler` class is initialized with a SQLAlchemy database session and 
+    provides methods to manage meal sessions, such as setting session information, filtering 
+    students, marking students as served, and retrieving session data.
+"""
 
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
@@ -275,8 +301,8 @@ class MealSessionHandler:
         Retrieves the list of students marked as served in the current session.
 
         Returns:
-            List[Tuple[str, str, str, str, str]]: A list of tuples containing served student information:
-                                                  (PRONT, Nome, Turma, Hora, Refeição).
+            List[Tuple[str, str, str, str, str]]: A list of tuples containing served student
+            information: (PRONT, Nome, Turma, Hora, Refeição).
         """
         if self._session_id is None:
             return []
@@ -310,8 +336,7 @@ class MealSessionHandler:
 
         Args:
             served_update (List[Tuple[str, str, str, str, str]]): A list of tuples containing
-                                                                  updated served student information:
-                                                                  (PRONT, Nome, Turma, Hora, Refeição).
+            updated served student information: (PRONT, Nome, Turma, Hora, Refeição).
         """
         if self._session_id is None:
             return

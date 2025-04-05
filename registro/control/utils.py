@@ -177,12 +177,14 @@ def find_best_matching_pair(target_pair: Tuple, vector_of_pairs: List[Tuple],
 
     Args:
         target_pair (Tuple): A pair of strings to be compared with each pair in the vector.
-        vector_of_pairs (List[Tuple]): A list of pairs of strings to be compared with the target pair.
-        score_function (Callable[[Any, Any], int], optional): A function that takes two strings and 
-                                                              returns a score. Defaults to fuzz.ratio.
+        vector_of_pairs (List[Tuple]): A list of pairs of strings to be compared with the
+                                       target pair.
+        score_function (Callable[[Any, Any], int], optional): A function that takes two strings
+                                                    and returns a score. Defaults to fuzz.ratio.
 
     Returns:
-        Tuple[Tuple[str, str], int]: A tuple containing the best matching pair and its corresponding score.
+        Tuple[Tuple[str, str], int]: A tuple containing the best matching pair and its
+                                     corresponding score.
     """
     if not vector_of_pairs:
         return None, 0

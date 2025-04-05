@@ -114,7 +114,7 @@ class SpreadSheet:
         """
         try:
             worksheet = self.spreadsheet.worksheet(sheet_name)
-            if (replace):
+            if replace:
                 worksheet.clear()
                 worksheet.update('A1', rows, value_input_option='USER_ENTERED')
                 logger.info(
