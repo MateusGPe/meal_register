@@ -18,6 +18,16 @@ from registro.model.tables import Group, Reserve, Student
 
 def _process_reserves(csv_reserves_data: Dict[str, str],
                       all_students_by_pront: Dict[str, Student]) -> Dict[str, str]:
+    """
+    Processes reserve data from a CSV file and prepares it for insertion.
+
+    Args:
+        csv_reserves_data (Dict[str, str]): Reserve data extracted from the CSV file.
+        all_students_by_pront (Dict[str, Student]): Mapping of student 'pront' to Student objects.
+
+    Returns:
+        Dict[str, str]: A list of dictionaries representing reserves to be inserted.
+    """
     reserves_to_insert: List[dict] = []
     for reserve_info in csv_reserves_data:
         pront = reserve_info['pront']
@@ -39,6 +49,20 @@ def _process_reserve_row(
         new_students_data: Dict[str, Dict[str, str]],
         csv_reserves_data: List[Dict[str, str]],
         existing_students_pronts: Set[str]):
+    """
+    Processes a single row of reserve data from the CSV file.
+
+    Args:
+        row (Dict[str, str]): A single row of data from the CSV file.
+        new_students_data (Dict[str, Dict[str, str]]): Dictionary to store new student data.
+        csv_reserves_data (List[Dict[str, str]]): List to store reserve data from the CSV.
+        existing_students_pronts (Set[str]): Set of existing student 'pront' values.
+
+    Raises:
+        KeyError: If a required key is missing in the row.
+        csv.Error: If there is an error parsing the CSV file.
+        SQLAlchemyError: If there is a database error.
+    """
     try:
         row = adjust_keys(row)
         pront = row['pront']
@@ -127,7 +151,17 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 def _get_existing_students_groups(student_crud: CRUD[Student],
                                   turma_crud: CRUD[Group]
                                   ) -> Tuple[Set[str], Set[str]]:
-    """Gets existing student pronts and group names."""
+    """
+    Retrieves existing student 'pront' values and group names from the database.
+
+    Args:
+        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
+        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
+
+    Returns:
+        Tuple[Set[str], Set[str]]: A tuple containing sets of student 'pront'
+                                    values and group names.
+    """
     student_pronts = {s.pront for s in student_crud.read_all()}
     group_names = {t.nome for t in turma_crud.read_all()}
     return student_pronts, group_names
@@ -137,7 +171,18 @@ def _find_new_students_groups(csv_file_path: str,
                               existing_students: Set[str],
                               existing_groups: Set[str]
                               ) -> Tuple[Dict[str, Dict[str, str]], Set[str]]:
-    """Finds new students and groups in the CSV."""
+    """
+    Identifies new students and groups from the CSV file.
+
+    Args:
+        csv_file_path (str): The path to the CSV file containing student data.
+        existing_students (Set[str]): Set of existing student 'pront' values.
+        existing_groups (Set[str]): Set of existing group names.
+
+    Returns:
+        Tuple[Dict[str, Dict[str, str]], Set[str]]: A dictionary of new students and a
+                                                    set of new groups.
+    """
     new_students: Dict[str, Dict[str, str]] = {}
     new_groups: Set[str] = set()
 
@@ -170,7 +215,13 @@ def _find_new_students_groups(csv_file_path: str,
 
 
 def _add_new_groups(turma_crud: CRUD[Group], new_groups: Set[str]) -> None:
-    """Adds new groups to the database."""
+    """
+    Adds new groups to the database.
+
+    Args:
+        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
+        new_groups (Set[str]): Set of new group names to be added.
+    """
     groups_to_insert = [{'nome': nome} for nome in new_groups]
     if groups_to_insert:
         turma_crud.bulk_create(groups_to_insert)
@@ -182,7 +233,19 @@ def _add_students_to_groups(student_crud: CRUD[Student],
                             csv_file_path: str,
                             new_students: Dict[str, Dict[str, str]],
                             existing_students: Set[str]) -> bool:
-    """Adds students to the database and associates them with groups."""
+    """
+    Adds students to the database and associates them with groups.
+
+    Args:
+        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
+        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
+        csv_file_path (str): The path to the CSV file containing student data.
+        new_students (Dict[str, Dict[str, str]]): Dictionary of new student data.
+        existing_students (Set[str]): Set of existing student 'pront' values.
+
+    Returns:
+        bool: True if the operation was successful, False otherwise.
+    """
     try:
         all_groups: Dict[str, Group] = {
             turma.nome: turma for turma in turma_crud.read_all()

@@ -28,8 +28,8 @@ class SearchStudents(ttk.Frame):
     """
     A frame for searching and registering students for meals.
 
-    Includes a search bar with an entry field and buttons for registering
-    and clearing the search. Displays search results in a treeview.
+    This frame includes a search bar with an entry field, buttons for registering
+    and clearing the search, and a treeview to display search results.
     """
 
     def __init__(self, parent, session_: SessionManager, table: ttk.tableview.Tableview,
@@ -163,7 +163,8 @@ class SearchStudents(ttk.Frame):
         """
         Handles the selection event on the student treeview.
 
-        Updates the last registered student label with the selected student's info.
+        Updates the last registered student label with the
+        selected student's information.
         """
         selected = self._tree_view.selection()
         if len(selected):

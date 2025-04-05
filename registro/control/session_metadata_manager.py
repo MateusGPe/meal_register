@@ -33,8 +33,8 @@ class SessionMetadataManager:
         """
         Initializes the SessionMetadataManager.
 
-        Args:
-            fn (str): The filename for storing session information.
+        This sets up the database connection, initializes the CRUD operations
+        for the Session model, and prepares attributes for session metadata.
         """
         engine = create_engine(DATABASE_URL)
         Base.metadata.create_all(engine)
@@ -46,7 +46,6 @@ class SessionMetadataManager:
             self.database_session, Session)
 
         self._session_id: Optional[int] = None
-        #self._periodo: Optional[str] = None
         self._hora: Optional[str] = None
         self._turmas: Optional[List[str]] = None
         self._date: Optional[str] = None
@@ -136,7 +135,6 @@ class SessionMetadataManager:
             session_ (Session): The Session object retrieved from the database.
         """
         self._meal_type = session_.refeicao
-        #self._periodo = session_.periodo
         self._date = session_.data
         self._hora = session_.hora
         self._turmas = json.loads(session_.groups)
