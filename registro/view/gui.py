@@ -19,10 +19,12 @@ from typing import List
 import ttkbootstrap as ttk
 from ttkbootstrap.tableview import Tableview
 
+from registro.control.constants import SESSION
+from registro.control.excel_exporter import export_to_excel
 from registro.control.session_manage import SessionManager
 from registro.control.sync_thread import SpreadsheetThread
 from registro.view.search_students import SearchStudents
-from registro.view.session_dialog import (SESSION, SessionDialog,
+from registro.view.session_dialog import (SessionDialog,
                                           classes_section)
 
 
@@ -202,7 +204,10 @@ class RegistrationApp(tk.Tk):
         Returns True if successful, False otherwise.
         """
         self.sync_session()
-        result = self._session.export_sheet()
+        result = export_to_excel(self._session.get_served_registers(),
+                                 self._session.get_meal_type(),
+                                 self._session.get_date(),
+                                 self._session.get_time())
         if result:
             messagebox.showinfo(
                 message=f"O arquivo foi salvo em Documentos:\n{self._session.get_sheet_path()}",
