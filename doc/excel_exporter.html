@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Python: module excel_exporter</title>
+</head><body>
+
+<table class="heading">
+<tr class="heading-text decor">
+<td class="title">&nbsp;<br><strong class="title">excel_exporter</strong></td>
+<td class="extra"><a href=".">index</a><br><a href="file:/home/mateusgp/projects/meal_register/registro/control/excel_exporter.py">/home/mateusgp/projects/meal_register/registro/control/excel_exporter.py</a></td></tr></table>
+    <p><span class="code">Exports&nbsp;session&nbsp;consumption&nbsp;data&nbsp;to&nbsp;an&nbsp;Excel&nbsp;spreadsheet.</span></p>
+<p>
+<table class="section">
+<tr class="decor pkg-content-decor heading-text">
+<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Modules</strong></td></tr>
+    
+<tr><td class="decor pkg-content-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
+<td class="singlecolumn"><table><tr><td class="multicolumn"><a href="os.html">os</a><br>
+</td><td class="multicolumn"><a href="xlsxwriter.html">xlsxwriter</a><br>
+</td><td class="multicolumn"></td><td class="multicolumn"></td></tr></table></td></tr></table><p>
+<table class="section">
+<tr class="decor functions-decor heading-text">
+<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Functions</strong></td></tr>
+    
+<tr><td class="decor functions-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
+<td class="singlecolumn"><dl><dt><a name="-export_to_excel"><strong>export_to_excel</strong></a>(served_meals_data: List[Tuple[str, str, str, str, str]], meal_type: str, session_date: str, session_time: str) -&gt; Optional[str]</dt><dd><span class="code">Exports&nbsp;the&nbsp;provided&nbsp;served&nbsp;students&nbsp;data&nbsp;to&nbsp;an&nbsp;Excel&nbsp;spreadsheet.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;served_meals_data&nbsp;(List[Tuple]):&nbsp;List&nbsp;of&nbsp;tuples&nbsp;containing&nbsp;served&nbsp;student&nbsp;info:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(PRONT,&nbsp;Nome,&nbsp;Turma,&nbsp;HoraConsumo,&nbsp;Refeição/Prato).<br>
+&nbsp;&nbsp;&nbsp;&nbsp;meal_type&nbsp;(str):&nbsp;The&nbsp;type&nbsp;of&nbsp;meal&nbsp;(e.g.,&nbsp;'Almoço',&nbsp;'Lanche').<br>
+&nbsp;&nbsp;&nbsp;&nbsp;session_date&nbsp;(str):&nbsp;The&nbsp;date&nbsp;of&nbsp;the&nbsp;session&nbsp;(e.g.,&nbsp;'YYYY/MM/DD').<br>
+&nbsp;&nbsp;&nbsp;&nbsp;session_time&nbsp;(str):&nbsp;The&nbsp;time&nbsp;of&nbsp;the&nbsp;session&nbsp;(e.g.,&nbsp;'HH:MM').<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bool:&nbsp;True&nbsp;if&nbsp;the&nbsp;export&nbsp;was&nbsp;successful,&nbsp;False&nbsp;otherwise.</span></dd></dl>
+</td></tr></table><p>
+<table class="section">
+<tr class="decor data-decor heading-text">
+<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Data</strong></td></tr>
+    
+<tr><td class="decor data-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
+<td class="singlecolumn"><strong>List</strong> = typing.List<br>
+<strong>Optional</strong> = typing.Optional<br>
+<strong>Tuple</strong> = typing.Tuple</td></tr></table>
+</body></html>
