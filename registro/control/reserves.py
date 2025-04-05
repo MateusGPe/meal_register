@@ -23,11 +23,11 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 
     This function reads student and reserve information from a CSV file,
     creates new student records if they don't exist, and creates corresponding
-    reserve entries. It also handles cases where students might not have
-    a reservation on a given date by creating a "Sem Reserva" entry.
+    reserve entries. If a student does not have a reservation on a given date,
+    a "Sem Reserva" entry is created.
 
     Args:
-        student_crud (CRUD[Students]): CRUD object for interacting with the Students table.
+        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
         reserve_crud (CRUD[Reserve]): CRUD object for interacting with the Reserve table.
         csv_file_path (str): The path to the CSV file containing the reserve data.
 
@@ -112,16 +112,15 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
                         csv_file_path: str) -> bool:
     """
-    Imports student data from a CSV file into the database, including turma information.
+    Imports student data from a CSV file into the database, including group (turma) information.
 
     This function reads student information (pront, nome, turma) from a CSV
-    file, creates new student and turma records in the database if they don't
+    file, creates new student and group records in the database if they don't
     already exist, and establishes the relationship between them.
 
     Args:
-        db_session: The SQLAlchemy database session.
-        student_crud (CRUD[Students]): CRUD object for interacting with the Students table.
-        turma_crud (CRUD[Turma]): CRUD object for interacting with the Turmas table.
+        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
+        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
         csv_file_path (str): The path to the CSV file containing the student data.
 
     Returns:
@@ -228,8 +227,11 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
     """
     Reserves a specific snack for all students on a given date.
 
+    This function creates a reserve entry for each student in the database
+    for the specified snack and date.
+
     Args:
-        student_crud (CRUD[Students]): CRUD object for interacting with the Students table.
+        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
         reserve_crud (CRUD[Reserve]): CRUD object for interacting with the Reserve table.
         data (str): The date for which to reserve the snack (in 'YYYY-MM-DD' format).
         dish (str): The name of the snack to reserve.

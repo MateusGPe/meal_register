@@ -83,7 +83,7 @@ class SyncReserves(Thread):
     Google Spreadsheet to the local database.
 
     This thread fetches data from the "Discentes" and "DB" sheets, saves
-    them to CSV files, and then imports this data into the respective
+    it to CSV files, and then imports this data into the respective
     database tables.
     """
 
@@ -104,10 +104,10 @@ class SyncReserves(Thread):
         """
         Executes the thread's main logic: fetching and importing data.
 
-        Fetches student data from the "Discentes" sheet, saves it to a CSV,
-        and imports it into the students table. Then, fetches reserve data
-        from the "DB" sheet, saves it to a CSV, and imports it into the
-        reserves table. Sets the 'error' attribute to indicate success.
+        Fetches student data from the "Discentes" sheet, saves it to a CSV
+        file, and imports it into the students table. Then, fetches reserve
+        data from the "DB" sheet, saves it to a CSV file, and imports it into
+        the reserves table. Sets the 'error' attribute to indicate success.
         """
         discentes_list = self._session.get_spreadsheet(
         ).fetch_sheet_values(STUDENTS_SHEET_NAME)

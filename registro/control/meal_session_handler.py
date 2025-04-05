@@ -23,7 +23,7 @@ class MealSessionHandler:
         Initializes the MealSessionHandler.
 
         Args:
-            database_session: The SQLAlchemy session.
+            database_session: The SQLAlchemy session used for database operations.
         """
         self.database_session = database_session
         self.student_crud: CRUD[Student] = CRUD[Student](
@@ -44,7 +44,15 @@ class MealSessionHandler:
 
     def set_session_info(self, session_id: Optional[int], date: Optional[str],
                          meal_type: Optional[str], turmas: Optional[List[str]]):
-        """Sets the session information."""
+        """
+        Sets the session information.
+
+        Args:
+            session_id (Optional[int]): The ID of the session.
+            date (Optional[str]): The date of the session in 'YYYY-MM-DD' format.
+            meal_type (Optional[str]): The type of meal (e.g., "lanche").
+            turmas (Optional[List[str]]): A list of class names participating in the session.
+        """
         self._session_id = session_id
         self._date = date
         self._meal_type = meal_type
@@ -52,15 +60,22 @@ class MealSessionHandler:
         self._snacks = self._meal_type.lower() == "lanche" if self._meal_type else False
 
     def get_served_registers(self):
-        """Returns the set of PRONTs of students served in the current session."""
+        """
+        Retrieves the set of PRONTs of students who have been served in the current session.
+
+        Returns:
+            Set[str]: A set of PRONTs of served students.
+        """
         return self._current_session_pronts
 
     def filter_students(self):
         """
-        Loads reserves and filters students based on selected classes,
-        including students without reservations if 'SEM RESERVA' is selected.
+        Loads reserves and filters students based on the selected classes.
+        Includes students without reservations if 'SEM RESERVA' is selected.
+
         Returns:
-            Optional[List[Dict]]: A list of student information.
+            Optional[List[Dict]]: A list of dictionaries containing student information,
+                                  or None if session information is incomplete.
         """
         if self._date is None or self._turmas is None:
             return None
@@ -149,6 +164,7 @@ class MealSessionHandler:
         Args:
             filtered_students (List[Dict]): The list to append student information.
             reserved_pronts (Set[str]): The set of PRONTs of students with reservations.
+            selected_turmas (Set[str]): The set of selected class names.
         """
         results = self.database_session.query(
             Student.pront,
@@ -187,8 +203,8 @@ class MealSessionHandler:
         Marks a student as served in the current session.
 
         Args:
-            student (Tuple): A tuple containing student information:
-                                    (PRONT, Nome, Turma, Hora, Refeição).
+            student (Tuple[str, str, str, str, str]): A tuple containing student information:
+                                                      (PRONT, Nome, Turma, Hora, Refeição).
 
         Returns:
             bool: True if the student was successfully marked as served, False otherwise.
@@ -221,8 +237,8 @@ class MealSessionHandler:
         Unmarks a student as served in the current session.
 
         Args:
-            student (Tuple): A tuple containing student information:
-                                    (PRONT, Nome, Turma, Hora, Refeição).
+            student (Tuple[str, str, str, str, str]): A tuple containing student information:
+                                                      (PRONT, Nome, Turma, Hora, Refeição).
 
         Returns:
             bool: True if the student was successfully unmarked as served, False otherwise.
@@ -246,13 +262,21 @@ class MealSessionHandler:
         return True
 
     def get_session_students(self):
-        """Returns the list of filtered students for the current session."""
+        """
+        Retrieves the list of filtered students for the current session.
+
+        Returns:
+            List[Dict]: A list of dictionaries containing filtered student information.
+        """
         return self._filtered_discentes
 
     def get_served_students(self) -> List[Tuple[str, str, str, str, str]]:
         """
-        Retrieves the list of students marked as served in the current session
-        from the database.
+        Retrieves the list of students marked as served in the current session.
+
+        Returns:
+            List[Tuple[str, str, str, str, str]]: A list of tuples containing served student information:
+                                                  (PRONT, Nome, Turma, Hora, Refeição).
         """
         if self._session_id is None:
             return []
@@ -285,8 +309,9 @@ class MealSessionHandler:
         Updates the list of served students for the current session.
 
         Args:
-            served_update (List[Tuple]): A list of tuples, where each tuple
-                                            contains information about a served student.
+            served_update (List[Tuple[str, str, str, str, str]]): A list of tuples containing
+                                                                  updated served student information:
+                                                                  (PRONT, Nome, Turma, Hora, Refeição).
         """
         if self._session_id is None:
             return

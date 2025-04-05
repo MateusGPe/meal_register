@@ -32,9 +32,9 @@ def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, t
         master (tk.Widget): The parent widget for this section.
 
     Returns:
-        tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]], ttk.Labelframe]:
-            A tuple containing a list of tuples (class name, BooleanVar, Checkbutton)
-            and the Labelframe containing the checkbuttons.
+        tuple: A tuple containing:
+            - A list of tuples (class name, BooleanVar, Checkbutton).
+            - The Labelframe containing the checkbuttons.
     """
     rb_group = ttk.Labelframe(master, text="Turmas", padding=6)
     rb_group.columnconfigure(tuple(range(3)), weight=1)
@@ -106,7 +106,12 @@ class SessionDialog(tk.Toplevel):
             cbtn.set(not cbtn.get())
 
     def on_okay(self):
-        """Handles the OK button click, collects session data, and calls the callback."""
+        """
+        Handles the OK button click, collects session data, and calls the callback.
+
+        Collects data such as meal type, snack, period, date, time, and selected classes.
+        Saves new snack options if necessary and calls the callback with the session data.
+        """
         classes_list: List[str] = [text for text,
                                    cbtn, _ in self._classes if cbtn.get()]
         snack = self._snack.get()
@@ -132,14 +137,24 @@ class SessionDialog(tk.Toplevel):
                 message='Nenhuma reserva foi feita.\nTente fazer o download.', title='Registro')
 
     def on_select_meal(self, *_):
-        """Enables or disables the snack combobox based on the selected meal."""
+        """
+        Enables or disables the snack combobox based on the selected meal.
+
+        If the selected meal is "Almoço", the snack combobox is disabled.
+        Otherwise, it is enabled.
+        """
         if self._meal.get() == "Almoço":
             self._snack.config(state='disabled')
         else:
             self._snack.config(state='normal')
 
     def create_section_secao(self) -> ttk.Labelframe:
-        """Creates the section for setting session details like time, meal, and period."""
+        """
+        Creates the section for setting session details like time, meal, and period.
+
+        Returns:
+            ttk.Labelframe: The Labelframe containing the session details widgets.
+        """
         session_group = ttk.Labelframe(self, text="Seção", padding=10)
 
         session_group.columnconfigure(0, weight=0)
@@ -214,7 +229,11 @@ class SessionDialog(tk.Toplevel):
         return session_group
 
     def sync(self):
-        """Initiates the synchronization of reserves from the spreadsheet."""
+        """
+        Initiates the synchronization of reserves from the spreadsheet.
+
+        Starts a background thread to perform the synchronization and monitors its progress.
+        """
         thread = SyncReserves(self.__parent.get_session())
         thread.start()
         self.sync_monitor(thread)
@@ -240,7 +259,12 @@ class SessionDialog(tk.Toplevel):
                     message='Os dados foram sincronizados com sucesso.')
 
     def create_section_buttons(self) -> tk.Frame:
-        """Creates the section containing the action buttons for the dialog."""
+        """
+        Creates the section containing the action buttons for the dialog.
+
+        Returns:
+            tk.Frame: The frame containing the action buttons.
+        """
         session_buttons = tk.Frame(self)
 
         ttk.Button(master=session_buttons, text="Ok",

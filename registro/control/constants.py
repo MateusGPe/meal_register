@@ -1,18 +1,17 @@
 """
-This module defines constants and configurations used throughout the meal register application.
+Constants and configurations for the Meal Register application.
 
-It includes:
+This module provides:
 - File paths for configuration and data files.
-- Google API scopes for accessing spreadsheets and Drive.
-- Data processing utilities such as capitalization exceptions and translation dictionaries.
-- Class and sheet names for integration and data organization.
+- Google API scopes for accessing spreadsheets and Google Drive.
+- Utilities for data processing, including capitalization exceptions and translation dictionaries.
+- Class and sheet names for data integration and organization.
 - A TypedDict structure for session data representation.
 """
 
 import re
 from typing import Dict, List, Literal, Set, TypedDict
 
-# File paths
 CREDENTIALS_PATH: str = "./config/credentials.json"
 DATABASE_URL: str = "sqlite:///./config/registro.db"
 RESERVES_CSV_PATH: str = "./config/reserves.csv"
@@ -20,13 +19,11 @@ SPREADSHEET_ID_JSON: str = "./config/spreadsheet.json"
 STUDENTS_CSV_PATH: str = "./config/students.csv"
 TOKEN_PATH: str = "./config/token.json"
 
-# Google API scopes
 SCOPES: List[str] = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
 ]
 
-# Data processing
 CAPITALIZE_EXCEPTIONS: Set[str] = {
     "a", "o",
     "as", "os",
@@ -50,7 +47,6 @@ TRANSLATE_KEYS = {
 
 REMOVE_IQ: re.Pattern[str] = re.compile(r"[Ii][Qq]\d0+")
 
-# Class and sheet names
 INTEGRATE_CLASSES: List[str] = [
     "1º A - MAC",
     "1º A - MEC",

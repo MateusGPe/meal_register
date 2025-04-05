@@ -1,11 +1,18 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
 
+"""
+Module description.
+
+This module provides functionality for managing meal serving session metadata.
+It includes classes and functions for interacting with the Session and Group models.
+"""
+
 import json
 import sys
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import create_engine
+from sqlalchemy import Tuple, create_engine
 from sqlalchemy.orm import sessionmaker
 
 from registro.control.constants import DATABASE_URL
@@ -55,7 +62,15 @@ class SessionMetadataManager:
         self._spread: Optional[SpreadSheet] = None
 
     def get_spreadsheet(self):
-        """Returns the SpreadSheet object."""
+        """
+        Returns the SpreadSheet object.
+
+        If the object has not been initialized, this method attempts to create a new instance.
+        If the initialization fails, the program exits with an error.
+
+        Returns:
+            SpreadSheet: The SpreadSheet object.
+        """
         if self._spread is None:
             try:
                 self._spread = SpreadSheet()
@@ -64,15 +79,30 @@ class SessionMetadataManager:
         return self._spread
 
     def get_date(self):
-        """Returns the current session date."""
+        """
+        Retrieves the current session date.
+
+        Returns:
+            Optional[str]: The current session date, or None if not set.
+        """
         return self._date
 
     def get_meal_type(self):
-        """Returns the current session meal type."""
+        """
+        Retrieves the current session meal type.
+
+        Returns:
+            Optional[str]: The current session meal type, or None if not set.
+        """
         return self._meal_type
 
     def get_time(self):
-        """Returns the current session time."""
+        """
+        Retrieves the current session time.
+
+        Returns:
+            Optional[str]: The current session time, or None if not set.
+        """
         return self._hora
 
     def load_session(self) -> Optional[dict]:
@@ -80,9 +110,8 @@ class SessionMetadataManager:
         Loads session information from the session file.
 
         Returns:
-            Optional[dict]: A dictionary containing the loaded session information
-                            or None if the file cannot be loaded or the session ID
-                            is invalid.
+            Optional[dict]: A dictionary containing the loaded session information,
+                            or None if the file cannot be loaded or the session ID is invalid.
         """
         self._session_info = load_json(self.filename)
 
@@ -110,7 +139,7 @@ class SessionMetadataManager:
         Updates the SessionMetadataManager's attributes based on the provided Session object.
 
         Args:
-            session_ (Session): The Session object from the database.
+            session_ (Session): The Session object retrieved from the database.
         """
         self._meal_type = session_.refeicao
         self._periodo = session_.periodo
@@ -119,11 +148,21 @@ class SessionMetadataManager:
         self._turmas = json.loads(session_.groups)
 
     def save_session(self) -> bool:
-        """Saves the current session information to the session file."""
+        """
+        Saves the current session information to the session file.
+
+        Returns:
+            bool: True if the session information was saved successfully, False otherwise.
+        """
         return save_json(self.filename, self._session_info)
 
     def get_session_classes(self):
-        """Returns the list of classes selected for the current session."""
+        """
+        Retrieves the list of classes selected for the current session.
+
+        Returns:
+            List[str]: A list of class names, or an empty list if no classes are set.
+        """
         return self._turmas or []
 
     def set_session_classes(self, classes):
@@ -134,8 +173,7 @@ class SessionMetadataManager:
             classes (List[str]): A list of class names.
 
         Returns:
-            Optional[List[str]]: The updated list of classes or None if the
-                                    session cannot be found.
+            Optional[List[str]]: The updated list of classes, or None if the session cannot be found.
         """
         session_ = self.session_crud.read_one(self._session_id)
 
@@ -149,15 +187,14 @@ class SessionMetadataManager:
 
     def new_session(self, session: Dict[str, Any]):
         """
-        Creates a new serving session.
+        Creates a new meal serving session.
 
         Args:
-            session (SessionDict): A dictionary containing the new session's information.
+            session (Dict[str, Any]): A dictionary containing the new session's information.
 
         Returns:
             bool: True if the session was created successfully, False otherwise.
         """
-
         refeicao = session["refeição"].lower()
         data = session["data"]
         self._date = data
@@ -196,7 +233,14 @@ class SessionMetadataManager:
         self.save_session()
         return True
 
-    def get_session_info(self):
+    def get_session_info(self) -> Tuple[int, str, str, List[str]]:
+        """
+        Retrieves the current session information.
+
+        Returns:
+            Tuple[int, str, str, List[str]]: A tuple containing the session ID, date,
+                                             meal type, and list of selected classes.
+        """
         return (
             self._session_id,
             self._date,

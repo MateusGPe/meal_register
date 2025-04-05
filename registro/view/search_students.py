@@ -4,8 +4,8 @@
 """
 Provides a frame for searching and registering students for meals.
 
-This frame includes an entry field for searching students, a button for
-registering selected students, and a treeview to display search results.
+This frame includes an entry field for searching students, buttons for
+registering and clearing the search, and a treeview to display search results.
 """
 
 import re
@@ -118,13 +118,17 @@ class SearchStudents(ttk.Frame):  # pylint: disable=too-many-ancestors
         return False
 
     def progress_start(self):
-        """Starts the indeterminate progress bar."""
+        """
+        Starts the indeterminate progress bar.
+        """
         self._progress.grid(sticky="NEWS", column=0, row=3,
                             columnspan=2, padx=3, pady=(2, 5))
         self._progress.start()
 
     def progress_stop(self):
-        """Stops and hides the indeterminate progress bar."""
+        """
+        Stops and hides the indeterminate progress bar.
+        """
         self._progress.grid_forget()
         self._progress.stop()
 

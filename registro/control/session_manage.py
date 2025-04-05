@@ -128,5 +128,10 @@ class SessionManager:
         return self.metadata_manager.set_session_classes(classes)
 
     def get_session_students(self):
-        """Returns the list of filtered students for the current session."""
+        """
+        Retrieves the list of students filtered for the current session.
+
+        Returns:
+            List[Dict]: A list of dictionaries containing student information.
+        """
         return self.meal_handler.get_session_students()

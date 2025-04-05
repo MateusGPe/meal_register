@@ -82,9 +82,8 @@ def load_json(filename) -> dict | None:
 
     Returns:
         dict | None: The contents of the JSON file as a dictionary if successful,
-        otherwise None if an error occurs.
+        or None if an error occurs.
     """
-
     try:
         with open(filename, "r", encoding="utf-8", errors="ignore") as f:
             data = json.load(f)
@@ -103,7 +102,7 @@ def load_csv(filename: str) -> Optional[dict | list]:
 
     Returns:
         dict | list | None: The contents of the CSV file as a list of dictionaries
-        if successful, otherwise None if an error occurs.
+        if successful, or None if an error occurs.
     """
     try:
         with open(filename, "r", encoding="utf-8", errors="ignore") as file:
@@ -122,7 +121,7 @@ def save_csv(data, filename, delimiter=',', quotechar='"', quoting=csv.QUOTE_NON
 
     Args:
         data (list): A list of rows, where each row is an iterable of values, to be
-                        written to theCSV.
+                     written to the CSV.
         filename (str): The path to the file where the CSV data will be saved.
         delimiter (str, optional): A one-character string used to separate fields in the CSV.
                                     Defaults to ','.
@@ -131,10 +130,9 @@ def save_csv(data, filename, delimiter=',', quotechar='"', quoting=csv.QUOTE_NON
         quoting (int, optional): Controls the quoting behavior. Defaults to csv.QUOTE_NONNUMERIC.
 
     Returns:
-        bool: True if the data was successfully saved, False if an error occurred during
-                the process.
+        bool: True if the data was successfully saved, or False if an error occurred during
+              the process.
     """
-
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile, delimiter=delimiter,
@@ -159,9 +157,8 @@ def save_json(filename: str, data: dict | list) -> bool:
         data (dict | list): The data to be saved, either as a dictionary or a list.
 
     Returns:
-        bool: True if the data was successfully saved, False if an error occurred.
+        bool: True if the data was successfully saved, or False if an error occurred.
     """
-
     try:
         with open(filename, "w", encoding="utf-8") as f:
             f.write(json.dumps(data, indent=2))
@@ -172,21 +169,20 @@ def save_json(filename: str, data: dict | list) -> bool:
 
 
 def find_best_matching_pair(target_pair: Tuple, vector_of_pairs: List[Tuple],
-                            score_function: Callable[[
-                                Any, Any], int] = fuzz.ratio
+                            score_function: Callable[[Any, Any], int] = fuzz.ratio
                             ) -> Tuple[Tuple[str, str], int]:
     """
     Finds the best matching pair of strings in a given vector of pairs, given a target pair,
     using a specified score function.
 
     Args:
-        target_pair (tuple): A pair of strings to be compared with each pair in the vector.
-        vector_of_pairs (list): A list of pairs of strings to be compared with the target pair.
-        score_function (function, optional): A function that takes two strings and returns a score.
-                                            Defaults to fuzz.ratio.
+        target_pair (Tuple): A pair of strings to be compared with each pair in the vector.
+        vector_of_pairs (List[Tuple]): A list of pairs of strings to be compared with the target pair.
+        score_function (Callable[[Any, Any], int], optional): A function that takes two strings and 
+                                                              returns a score. Defaults to fuzz.ratio.
 
     Returns:
-        tuple: A tuple containing the best matching pair and its corresponding score.
+        Tuple[Tuple[str, str], int]: A tuple containing the best matching pair and its corresponding score.
     """
     if not vector_of_pairs:
         return None, 0
@@ -205,7 +201,7 @@ def find_best_matching_pair(target_pair: Tuple, vector_of_pairs: List[Tuple],
         score1 = score_function(string1_target, string1_vector)
         score2 = score_function(string2_target, string2_vector)
 
-        overall_score = (score1 + 2*score2) / 3
+        overall_score = (score1 + 2 * score2) / 3
 
         if overall_score > highest_score:
             highest_score = overall_score
@@ -218,6 +214,12 @@ def capitalize(text: str) -> str:
     """
     Returns the given string capitalized, unless it is in the set of given exceptions.
     The exceptions are lowercased words that should not be capitalized.
+
+    Args:
+        text (str): The input string to be capitalized.
+
+    Returns:
+        str: The capitalized string, or the original string if it is in the exceptions.
 
     Examples:
         >>> capitalize('a')
@@ -254,7 +256,6 @@ def adjust_keys(input_dict: dict) -> dict:
     Returns:
         dict: A new dictionary with adjusted keys and values.
     """
-
     lowercase_dict = {}
     for key, value in input_dict.items():
         if isinstance(key, str):

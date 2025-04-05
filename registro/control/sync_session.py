@@ -21,12 +21,26 @@ logger = logging.getLogger(__name__)
 
 
 def _convert_to_tuples(list_of_lists: list) -> Set[Tuple[str, ...]]:
-    """Converts a list of lists to a set of tuples."""
+    """Converts a list of lists into a set of tuples.
+
+    Args:
+        list_of_lists (list): A list of lists to be converted.
+
+    Returns:
+        Set[Tuple[str, ...]]: A set of tuples representing the input data.
+    """
     return set(tuple(row) for row in list_of_lists)
 
 
 def _convert_to_lists(set_of_tuples: Set[Tuple[str, ...]]) -> List[List[str]]:
-    """Converts a set of tuples to a list of lists."""
+    """Converts a set of tuples into a list of lists.
+
+    Args:
+        set_of_tuples (Set[Tuple[str, ...]]): A set of tuples to be converted.
+
+    Returns:
+        List[List[str]]: A list of lists representing the input data.
+    """
     return [list(row) for row in set_of_tuples]
 
 
@@ -34,8 +48,8 @@ class SpreadSheet:
     """
     A class to interact with Google Sheets using the gspread library.
 
-    Provides methods for updating, fetching, and appending data to a
-    Google Spreadsheet.
+    This class provides methods for updating, fetching, and appending data
+    to a Google Spreadsheet.
     """
     spreadsheet: gspread.Spreadsheet
     credentials: Credentials
@@ -51,8 +65,13 @@ class SpreadSheet:
 
         Args:
             config_file (str, optional): Path to the JSON configuration file
-                containing the Google Spreadsheet key.
-                Defaults to SPREADSHEET_ID_JSON.
+                containing the Google Spreadsheet key. Defaults to SPREADSHEET_ID_JSON.
+
+        Raises:
+            JSONDecodeError: If the configuration file contains invalid JSON.
+            SpreadsheetNotFound: If the specified spreadsheet cannot be found.
+            IOError: If the configuration file cannot be read.
+            Exception: For any other unexpected errors.
         """
         try:
             self.credentials = GrantAccess().reflesh_token().get_credentials()
@@ -95,7 +114,7 @@ class SpreadSheet:
         """
         try:
             worksheet = self.spreadsheet.worksheet(sheet_name)
-            if replace:
+            if (replace):
                 worksheet.clear()
                 worksheet.update('A1', rows, value_input_option='USER_ENTERED')
                 logger.info(
@@ -125,7 +144,7 @@ class SpreadSheet:
 
         Returns:
             Optional[List[List[str]]]: A list of lists representing the sheet's values,
-                or None if the sheet is not found or an error occurs.
+            or None if the sheet is not found or an error occurs.
         """
         try:
             worksheet = self.spreadsheet.worksheet(sheet_name)

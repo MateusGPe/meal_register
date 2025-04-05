@@ -83,7 +83,12 @@ class RegistrationApp(tk.Tk):
         self.colors = colors  # Store colors for later use
 
     def _create_student_table(self) -> Tableview:
-        """Creates and configures the student data tableview."""
+        """
+        Creates and configures the student data tableview.
+
+        Returns:
+            Tableview: The configured tableview widget.
+        """
         coldata = [
             {"text": "Prontuário", "stretch": False},
             {"text": "Nome completo", "width": 200, "stretch": True},
@@ -115,13 +120,23 @@ class RegistrationApp(tk.Tk):
         return table
 
     def _configure_panel_grid(self, panel: ttk.Frame):
-        """Configures the grid layout for the top panel."""
+        """
+        Configures the grid layout for the top panel.
+
+        Args:
+            panel (ttk.Frame): The panel to configure.
+        """
         panel.grid_rowconfigure(0, weight=1)
         panel.grid_columnconfigure(0, weight=1)
         panel.grid_columnconfigure((1, 2, 3), weight=0)
 
     def _create_panel_labels(self, panel: ttk.Frame):
-        """Creates and places the labels for the top panel."""
+        """
+        Creates and places the labels for the top panel.
+
+        Args:
+            panel (ttk.Frame): The panel where the labels will be placed.
+        """
         self.discentes_reg = ttk.Label(
             master=panel,
             text="Discentes registrados",
@@ -137,20 +152,35 @@ class RegistrationApp(tk.Tk):
         self.remaining.grid(sticky='NEWS', column=1, row=0)
 
     def _create_notebook(self) -> ttk.Notebook:
-        """Creates and returns the main notebook widget."""
+        """
+        Creates and returns the main notebook widget.
+
+        Returns:
+            ttk.Notebook: The configured notebook widget.
+        """
         notebook = ttk.Notebook(self)
         notebook.grid(sticky="NEWS", column=0, row=2, padx=3, pady=2)
         return notebook
 
     def _create_search_student_panel(self) -> SearchStudents:
-        """Creates and returns the search student panel."""
+        """
+        Creates and returns the search student panel.
+
+        Returns:
+            SearchStudents: The search student panel widget.
+        """
         search_panel = SearchStudents(
             self.notebook, self._session, self.table, self)
         search_panel.pack(fill="both", expand=True)
         return search_panel
 
     def _create_session_panel(self) -> ttk.Frame:
-        """Creates and configures the session management panel."""
+        """
+        Creates and configures the session management panel.
+
+        Returns:
+            ttk.Frame: The session management panel widget.
+        """
         session_frame = ttk.Frame(master=self.notebook)
         (self.list_turmas, classes_widget) = classes_section(session_frame)
         for (_, _, cbtn) in self.list_turmas:
@@ -176,7 +206,13 @@ class RegistrationApp(tk.Tk):
         self.notebook.add(self.sessao, text="Sessão")
 
     def _load_existing_session(self):
-        """Loads existing session data if available."""
+        """
+        Loads existing session data if available.
+
+        If a session is loaded, filters the students, updates the table,
+        and displays the main window. Otherwise, opens a dialog to create
+        a new session.
+        """
         if self._session.load_session() is not None:
             self._session.filter_students()
             servidos = self._session.get_served_students()
@@ -192,7 +228,12 @@ class RegistrationApp(tk.Tk):
             SessionDialog("Nova seção", self.new_session_callback, self)
 
     def get_session(self) -> SessionManager:
-        """Returns the current SessionManager instance."""
+        """
+        Returns the current SessionManager instance.
+
+        Returns:
+            SessionManager: The current session manager.
+        """
         return self._session
 
     def export_xlsx(self) -> bool:
@@ -201,7 +242,9 @@ class RegistrationApp(tk.Tk):
 
         Initiates the session synchronization and then exports the data.
         Displays a message box with the save location upon success.
-        Returns True if successful, False otherwise.
+
+        Returns:
+            bool: True if the export was successful, False otherwise.
         """
         self.sync_session()
         result = export_to_excel(self._session.get_served_students(),
@@ -247,14 +290,19 @@ class RegistrationApp(tk.Tk):
 
     def export_and_clear(self):
         """
-        Exports the session data and then clears the local session file,
-        effectively ending the current session and closing the application.
+        Exports the session data and then clears the local session file.
+
+        This effectively ends the current session and closes the application.
         """
         if self.export_xlsx():
             self._remove_session_file()
 
     def _remove_session_file(self):
-        """Removes the local session file."""
+        """
+        Removes the local session file.
+
+        If an error occurs during file removal, displays an error message.
+        """
         try:
             os.remove(os.path.abspath("./config/session.json"))
         except OSError as e:
@@ -265,7 +313,11 @@ class RegistrationApp(tk.Tk):
             self.destroy()
 
     def update_info(self):
-        """Updates the displayed information about registered students."""
+        """
+        Updates the displayed information about registered students.
+
+        Updates the number of registered students and the remaining count.
+        """
         reg_num = len(self._session.get_served_students())
 
         self.discentes_reg.configure(
@@ -307,7 +359,15 @@ class RegistrationApp(tk.Tk):
         return True
 
     def _process_new_session(self, result: SESSION) -> bool:
-        """Processes the data from the new session dialog."""
+        """
+        Processes the data from the new session dialog.
+
+        Args:
+            result (SESSION): A dictionary containing the new session's data.
+
+        Returns:
+            bool: True if the session was successfully created, False otherwise.
+        """
         if not self._session.new_session(result):
             return False
 
@@ -318,14 +378,22 @@ class RegistrationApp(tk.Tk):
         return True
 
     def _update_class_checkboxes(self, selected_classes: List[str]):
-        """Updates the state of the class selection checkboxes."""
+        """
+        Updates the state of the class selection checkboxes.
+
+        Args:
+            selected_classes (List[str]): The list of selected class names.
+        """
         for class_name, check_button, _ in self.list_turmas:
             check_button.set(class_name in selected_classes)
 
 
 def main():
-    """The main entry point of the application."""
+    """
+    The main entry point of the application.
 
+    Initializes the application and handles platform-specific configurations.
+    """
     if platform.system() == "Windows":
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(1)
