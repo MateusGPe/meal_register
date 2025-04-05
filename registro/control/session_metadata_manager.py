@@ -10,9 +10,9 @@ It includes classes and functions for interacting with the Session and Group mod
 
 import json
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import Tuple, create_engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from registro.control.constants import DATABASE_URL
@@ -173,7 +173,8 @@ class SessionMetadataManager:
             classes (List[str]): A list of class names.
 
         Returns:
-            Optional[List[str]]: The updated list of classes, or None if the session cannot be found.
+            Optional[List[str]]: The updated list of classes, or None if
+            the session cannot be found.
         """
         session_ = self.session_crud.read_one(self._session_id)
 
