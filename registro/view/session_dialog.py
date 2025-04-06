@@ -39,9 +39,13 @@ def classes_section(master: tk.Widget, classes: List[str]
     """
     rb_group = ttk.Labelframe(master, text="🎟️ Reservado", padding=6)
     rb_group.columnconfigure(tuple(range(3)), weight=1)
-    rb_group.rowconfigure(tuple(range(int((len(classes) + 2) / 3))), weight=1)
+    rb_group.rowconfigure(tuple(range(int((len(classes) + 2) / 3)) or [1]), weight=1)
     chk = []
-    for i, t in enumerate(classes):
+    if not classes:
+        logger.warning("No classes available to create checkbuttons.")
+        return [], rb_group
+
+    for i, t in enumerate(classes or ['Vazio']):
         without_reserve = t != 'SEM RESERVA'
         check_var = tk.BooleanVar(value=not without_reserve)
         check_btn = ttk.Checkbutton(
@@ -74,13 +78,16 @@ class SessionDialog(tk.Toplevel):
         self.__parent = parent_
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.create_section_secao().pack(fill="both", padx=10, pady=10, expand=True)
+        self.create_section_secao().grid(column=0, row=0, padx=10, pady=10, sticky='nswe')
 
-        (self._classes, class_widget) = classes_section(
-            self, sorted(set(g.nome or 'Vazio' for g in parent_._session.turma_crud.read_all())))
-        class_widget.pack(padx=10, pady=10, fill='both', expand=True)
+        classes = sorted(set(g.nome or 'Vazio' for g in parent_._session.turma_crud.read_all()))
 
-        self.create_section_buttons().pack(fill="both", padx=10, pady=10, expand=True)
+        self._classes = None
+        if classes:
+            (self._classes, class_widget) = classes_section(self, classes)
+            class_widget.grid(column=0, row=1, padx=10, pady=10, sticky='nswe')
+
+        self.create_section_buttons().grid(column=0, row=2, padx=10, pady=10, sticky='nswe')
 
     def on_closing(self):
         """Handles the event when the dialog window is closed."""
@@ -91,21 +98,29 @@ class SessionDialog(tk.Toplevel):
 
     def on_clear(self):
         """Clears the selection of all class checkbuttons."""
+        if not self._classes:
+            return
         for _, cbtn, _ in self._classes:
             cbtn.set(False)
 
     def on_integral(self):
         """Selects the class checkbuttons corresponding to integrated classes."""
+        if not self._classes:
+            return
         for text, cbtn, _ in self._classes:
             cbtn.set(text in INTEGRATE_CLASSES)
 
     def on_others(self):
         """Selects the class checkbuttons for classes not in INTEGRATE_CLASSES."""
+        if not self._classes:
+            return
         for text, cbtn, _ in self._classes:
             cbtn.set(text not in INTEGRATE_CLASSES)
 
     def on_invert(self):
         """Inverts the selection state of all class checkbuttons."""
+        if not self._classes:
+            return
         for _, cbtn, _ in self._classes:
             cbtn.set(not cbtn.get())
 
@@ -258,7 +273,9 @@ class SessionDialog(tk.Toplevel):
             else:
                 messagebox.showinfo(
                     title='Registros',
-                    message='Os dados foram sincronizados com sucesso.')
+                    message='Os dados foram sincronizados com sucesso.\n'
+                    'Reinicie o aplicativo para aplicar as mudanças.')
+                self.on_closing()
 
     def create_section_buttons(self) -> tk.Frame:
         """

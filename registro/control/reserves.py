@@ -67,6 +67,10 @@ def _process_reserve_row(
         row = adjust_keys(row)
         pront = row['pront']
         nome = row['nome']
+
+        if not pront or not nome:
+            return
+
         turma = row['turma']
         dish = row['dish']
         data = row['data']
@@ -116,6 +120,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
                     row, new_students_data,
                     csv_reserves_data,
                     existing_students_pronts)
+
         if new_students_data:
             student_crud.bulk_create(list(new_students_data.values()))
 
@@ -146,201 +151,6 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
     except (TypeError, ValueError) as e:
         print(f"Invalid data: {e}")
         return False
-
-
-def _get_existing_students_groups(student_crud: CRUD[Student],
-                                  turma_crud: CRUD[Group]
-                                  ) -> Tuple[Set[str], Set[str]]:
-    """
-    Retrieves existing student 'pront' values and group names from the database.
-
-    Args:
-        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
-        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
-
-    Returns:
-        Tuple[Set[str], Set[str]]: A tuple containing sets of student 'pront'
-                                    values and group names.
-    """
-    student_pronts = {s.pront for s in student_crud.read_all()}
-    group_names = {t.nome for t in turma_crud.read_all()}
-    return student_pronts, group_names
-
-
-def _find_new_students_groups(csv_file_path: str,
-                              existing_students: Set[str],
-                              existing_groups: Set[str]
-                              ) -> Tuple[Dict[str, Dict[str, str]], Set[str]]:
-    """
-    Identifies new students and groups from the CSV file.
-
-    Args:
-        csv_file_path (str): The path to the CSV file containing student data.
-        existing_students (Set[str]): Set of existing student 'pront' values.
-        existing_groups (Set[str]): Set of existing group names.
-
-    Returns:
-        Tuple[Dict[str, Dict[str, str]], Set[str]]: A dictionary of new students and a
-                                                    set of new groups.
-    """
-    new_students: Dict[str, Dict[str, str]] = {}
-    new_groups: Set[str] = set()
-
-    try:
-        with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                try:
-                    row = adjust_keys(row)
-                    pront = row['pront']
-                    nome = row['nome']
-                    turma_nome = row['turma']
-
-                    if pront not in new_students and pront not in existing_students:
-                        new_students[pront] = {'pront': pront, 'nome': nome}
-
-                    if turma_nome not in existing_groups:
-                        new_groups.add(turma_nome)
-
-                except KeyError as e:
-                    print(f"Missing key in row: {row}. Error: {e}")
-                except (TypeError, ValueError) as e:
-                    print(f"Error processing row: {row}. Error: {e}")
-    except FileNotFoundError:
-        print(f"File not found: {csv_file_path}")
-        return {}, set()
-    except csv.Error as e:
-        print(f"Error parsing CSV: {e}")
-        return {}, set()
-    return new_students, new_groups
-
-
-def _add_new_groups(turma_crud: CRUD[Group], new_groups: Set[str]) -> None:
-    """
-    Adds new groups to the database.
-
-    Args:
-        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
-        new_groups (Set[str]): Set of new group names to be added.
-    """
-    groups_to_insert = [{'nome': nome} for nome in new_groups]
-    if groups_to_insert:
-        turma_crud.bulk_create(groups_to_insert)
-        turma_crud.commit()
-
-
-def _add_students_to_groups(student_crud: CRUD[Student],
-                            turma_crud: CRUD[Group],
-                            csv_file_path: str,
-                            new_students: Dict[str, Dict[str, str]],
-                            existing_students: Set[str]) -> bool:
-    """
-    Adds students to the database and associates them with groups.
-
-    Args:
-        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
-        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
-        csv_file_path (str): The path to the CSV file containing student data.
-        new_students (Dict[str, Dict[str, str]]): Dictionary of new student data.
-        existing_students (Set[str]): Set of existing student 'pront' values.
-
-    Returns:
-        bool: True if the operation was successful, False otherwise.
-    """
-    try:
-        all_groups: Dict[str, Group] = {
-            turma.nome: turma for turma in turma_crud.read_all()
-        }
-        students_to_add: List[Student] = []
-
-        with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
-            for row in csv.DictReader(csvfile):
-                try:
-                    row = adjust_keys(row)
-                    pront = row['pront']
-                    nome = row['nome']
-                    turma_nome = row['turma']
-
-                    if pront in new_students or pront in existing_students:
-                        student = (student_crud.read_filtered(
-                            pront=pront, limit=1) or [None])[0]
-
-                        if not student:
-                            student = Student(pront=pront, nome=nome)
-                            students_to_add.append(student)
-
-                        if turma_nome in all_groups and student:
-                            turma = all_groups[turma_nome]
-                            if turma not in student.groups:
-                                student.groups.append(turma)
-
-                except KeyError as e:
-                    print(f"Missing key in row: {row}. Error: {e}")
-                except SQLAlchemyError as e:
-                    student_crud.get_session().rollback()
-                    print(
-                        f"Database error during student-turma association: {e}")
-                    return False
-
-        if students_to_add:
-            student_crud.get_session().add_all(students_to_add)
-            student_crud.commit()
-        return True
-    except FileNotFoundError:
-        print(f"File not found: {csv_file_path}")
-        return False
-    except csv.Error as e:
-        print(f"Error parsing CSV: {e}")
-        return False
-    except SQLAlchemyError as e:
-        student_crud.get_session().rollback()
-        print(f"Database error: {e}")
-        return False
-    except (TypeError, ValueError) as e:
-        print(f"Invalid data: {e}")
-        return False
-
-
-def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
-                        csv_file_path: str) -> bool:
-    """
-    Imports student data from a CSV file into the database, including group (turma) information.
-
-    This function reads student information (pront, nome, turma) from a CSV
-    file, creates new student and group records in the database if they don't
-    already exist, and establishes the relationship between them.
-
-    Args:
-        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
-        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
-        csv_file_path (str): The path to the CSV file containing the student data.
-
-    Returns:
-        bool: True if the import was successful, False otherwise.
-    """
-    try:
-        existing_students, existing_groups = _get_existing_students_groups(
-            student_crud, turma_crud)
-
-        new_students, new_groups = _find_new_students_groups(
-            csv_file_path, existing_students, existing_groups
-        )
-
-        _add_new_groups(turma_crud, new_groups)
-
-        if not _add_students_to_groups(
-            student_crud, turma_crud, csv_file_path, new_students, existing_students
-        ):
-            return False
-
-        print(
-            f"Successfully imported students and groups from {csv_file_path}")
-        return True
-
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"An unexpected error occurred {type(e).__name__}: {e}")
-        return False
-
 
 def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
                    data: str, dish: str) -> bool:
@@ -376,6 +186,90 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
         return True
     except SQLAlchemyError as e:
         reserve_crud.rollback()
+        print(f"Database error: {e}")
+        return False
+    except (TypeError, ValueError) as e:
+        print(f"Invalid data: {e}")
+        return False
+
+
+def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
+                        csv_file_path: str) -> bool:
+    """
+    Imports student data from a CSV file into the database, including group (turma) information.
+
+    This function reads student information (pront, nome, turma) from a CSV
+    file, creates new student and group records in the database if they don't
+    already exist, and establishes the relationship between them.
+
+    Args:
+        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
+        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
+        csv_file_path (str): The path to the CSV file containing the student data.
+
+    Returns:
+        bool: True if the import was successful, False otherwise.
+    """
+    try:
+        new_students: Dict[str, Dict[str, str]] = {}
+        new_groups: Set[str] = set()
+        students_groups: Set[Tuple[str, str]] = set()
+        existing_students_pronts: Dict[str, Student] = {
+            s.pront: s for s in student_crud.read_all()
+        }
+
+        with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                try:
+                    row = adjust_keys(row)
+
+                    pront = row['pront']
+
+                    if not pront or not row['nome']:
+                        continue
+
+                    group_name = row['turma']
+
+                    if (pront not in new_students and
+                            pront not in existing_students_pronts):
+                        row.pop('turma')
+                        new_students[pront] = row
+
+                    students_groups.add((pront, group_name))
+
+                    new_groups.add(group_name)
+                except KeyError as e:
+                    print(f"Missing key in row: {row}. Error: {e}")
+                except (TypeError, ValueError) as e:
+                    print(f"Error processing row: {row}. Error: {e}")
+
+            new_groups.difference_update(set(t.nome for t in turma_crud.read_all()))
+
+            turma_crud.bulk_create([{'nome': name} for name in new_groups])
+            student_crud.bulk_create(list(new_students.values()))
+
+            all_groups: Dict[str, Group] = {t.nome: t for t in turma_crud.read_all()}
+            all_students: Dict[str, Student] = {
+                s.pront: s for s in student_crud.read_all()
+            }
+            for pront, group_name in students_groups:
+                if pront in all_students and group_name in all_groups:
+                    student = all_students[pront]
+                    group = all_groups[group_name]
+
+                    if group not in student.groups:
+                        student.groups.append(group)
+        return True
+
+    except FileNotFoundError:
+        print(f"File not found: {csv_file_path}")
+        return False
+    except csv.Error as e:
+        print(f"Error parsing CSV: {e}")
+        return False
+    except SQLAlchemyError as e:
+        student_crud.get_session().rollback()
         print(f"Database error: {e}")
         return False
     except (TypeError, ValueError) as e:

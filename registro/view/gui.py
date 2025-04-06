@@ -41,7 +41,7 @@ def classes_section(master: tk.Widget, classes: List[str], callback
     Returns:
         tuple: A tuple containing:
             - A list of tuples (item identifier, BooleanVar, Checkbutton).
-              The identifier will be either the class name or "🚫 " + class name.
+              The identifier will be either the class name or "➕ " + class name.
             - The Labelframe containing the checkbuttons.
     """
     sr = ttk.Labelframe(master, text="🎟️ Reservas", padding=6)
@@ -50,41 +50,41 @@ def classes_section(master: tk.Widget, classes: List[str], callback
     rb_group.columnconfigure((0, 1), weight=1)
 
     reserves = []
-    for _class in enumerate(classes):
+    for _class in enumerate(classes or []):
         check_var_reserva = tk.BooleanVar()
         check_btn_reserva = ttk.Checkbutton(
             rb_group, text=_class[1], variable=check_var_reserva,
             bootstyle="success-round-toggle")
         check_btn_reserva.grid(column=0, row=_class[0] + 1,
                                stick="ew", padx=10, pady=5)
-        
+
         reserves.append((_class[1], check_var_reserva, check_btn_reserva))
 
         check_var_sem_reserva = tk.BooleanVar()
         check_btn_sem_reserva = ttk.Checkbutton(
-            rb_group, text="🚫 " + _class[1], variable=check_var_sem_reserva,
-            bootstyle="danger-round-toggle")
+            rb_group, text="➕ " + _class[1], variable=check_var_sem_reserva,
+            bootstyle="warning-round-toggle")
         check_btn_sem_reserva.grid(column=1, row=_class[0] + 1,
                                    stick="ew", padx=10, pady=5)
-        reserves.append(("🚫 " + _class[1], check_var_sem_reserva, check_btn_sem_reserva))
+        reserves.append(("➕ " + _class[1], check_var_sem_reserva, check_btn_sem_reserva))
 
     check_var_all_reservas = tk.BooleanVar()
     check_btn_all_reservas = ttk.Checkbutton(
         rb_group, text="Reservas",
         variable=check_var_all_reservas,
         command=lambda: ([r[1].set(check_var_all_reservas.get())
-                         for r in reserves if not r[0].startswith("🚫")], callback()),
+                         for r in reserves if not r[0].startswith("➕")], callback()),
         bootstyle="success-round-toggle")
     check_btn_all_reservas.grid(column=0, row=0,
                                 stick="ew", padx=10, pady=5)
 
     check_var_all_sem_reservas = tk.BooleanVar()
     check_btn_all_sem_reservas = ttk.Checkbutton(
-        rb_group, text="Sem Reservas",
+        rb_group, text="➕ Sem Reservas",
         variable=check_var_all_sem_reservas,
         command=lambda: ([r[1].set(check_var_all_sem_reservas.get())
-                         for r in reserves if r[0].startswith("🚫")], callback()),
-        bootstyle="danger-round-toggle")
+                         for r in reserves if r[0].startswith("➕")], callback()),
+        bootstyle="warning-round-toggle")
     check_btn_all_sem_reservas.grid(column=1, row=0,
                                     stick="ew", padx=10, pady=5)
 
@@ -143,7 +143,7 @@ class RegistrationApp(tk.Tk):
 
     def _configure_style(self):
         """Configures the ttkbootstrap style for the application."""
-        self.style = ttk.Style(theme='darkly')
+        self.style = ttk.Style(theme='minty')
         colors = self.style.colors
         self.style.configure('Treeview', font=(None, 11), rowheight=35)
         self.colors = colors  # Store colors for later use
@@ -176,8 +176,8 @@ class RegistrationApp(tk.Tk):
             coldata=coldata,
             autofit=True,
             searchable=True,
-            bootstyle='secondary',
-            stripecolor=(self.colors.secondary, None),
+            bootstyle='light',
+            stripecolor=(self.colors.light, None),
         )
         table.pack(fill="both", pady=0, padx=0, expand=True)
         tbv_frame.grid(sticky="NEWS", column=1, row=2, padx=3, pady=2)
@@ -297,7 +297,7 @@ class RegistrationApp(tk.Tk):
             groups = self._session.get_session_classes()
 
             for i in self.list_turmas:
-                i[1].set(i[0].replace("🚫", "#") in groups)
+                i[1].set(i[0].replace("➕", "#") in groups)
 
             self.update_info()
             self.deiconify()
@@ -417,7 +417,7 @@ class RegistrationApp(tk.Tk):
         Updates the session's selected classes and filters the displayed
         students accordingly.
         """
-        classes: List[str] = [class_.replace('🚫', '#') for class_, check,
+        classes: List[str] = [class_.replace('➕', '#') for class_, check,
                               _ in self.list_turmas if check.get()]
 
         self._session.set_session_classes(classes)

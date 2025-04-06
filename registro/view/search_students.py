@@ -300,7 +300,7 @@ class SearchStudents(ttk.Frame):
                 that holds the treeview and the treeview widget itself.
         """
         tvpanel = ttk.Frame(self)
-        tv = ttk.Treeview(tvpanel, show='headings', bootstyle='primary')
+        tv = ttk.Treeview(tvpanel, show='headings', bootstyle='light')
 
         tvpanel.grid_rowconfigure(0, weight=1)
         tvpanel.grid_rowconfigure(1, weight=0)
@@ -330,7 +330,7 @@ class SearchStudents(ttk.Frame):
         }
 
         for k, v in self.cols.items():
-            tv.column(k, anchor='w', stretch='yes', width=v[1])
+            tv.column(k, anchor='w', stretch='no', width=v[1])
             tv.heading(k, text=v[0],
                        command=partial(self.sort_treeview, tv, k, False))
 
