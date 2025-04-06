@@ -15,7 +15,7 @@ import platform
 import tkinter as tk
 from tkinter import TclError, messagebox
 from typing import List
-
+from ttkbootstrap.scrolled import ScrolledFrame
 import ttkbootstrap as ttk
 from ttkbootstrap.tableview import Tableview
 
@@ -24,9 +24,79 @@ from registro.control.excel_exporter import export_to_excel
 from registro.control.session_manage import SessionManager
 from registro.control.sync_thread import SpreadsheetThread
 from registro.view.search_students import SearchStudents
-from registro.view.session_dialog import SessionDialog, classes_section
+from registro.view.session_dialog import SessionDialog
+
+
+def classes_section(master: tk.Widget, classes: List[str], callback
+                    ) -> tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]],
+                               ttk.Labelframe]:
+    """
+    Creates a section with checkbuttons for selecting classes.
+
+    Args:
+        master (tk.Widget): The parent widget for this section.
+        classes (List[str]): A list of class names.
+        title (str): The text to display in the Labelframe title.
+
+    Returns:
+        tuple: A tuple containing:
+            - A list of tuples (item identifier, BooleanVar, Checkbutton).
+              The identifier will be either the class name or "🚫 " + class name.
+            - The Labelframe containing the checkbuttons.
+    """
+    sr = ttk.Labelframe(master, text="🎟️ Reservas", padding=6)
+    rb_group = ScrolledFrame(sr, autohide=True)
+
+    rb_group.columnconfigure((0, 1), weight=1)  # Configure two columns
+
+    reserves = []
+    for index, _class in enumerate(classes):
+        # "Reservas" option
+        check_var_reserva = tk.BooleanVar()
+        check_btn_reserva = ttk.Checkbutton(
+            rb_group, text=_class, variable=check_var_reserva,
+            bootstyle="success-round-toggle")
+        check_btn_reserva.grid(column=0, row=index + 1,
+                               stick="ew", padx=10, pady=5)
+        reserves.append((_class, check_var_reserva, check_btn_reserva))
+
+        # "Sem Reservas" option
+        check_var_sem_reserva = tk.BooleanVar()
+        check_btn_sem_reserva = ttk.Checkbutton(
+            rb_group, text="🚫 " + _class, variable=check_var_sem_reserva,
+            bootstyle="danger-round-toggle")
+        check_btn_sem_reserva.grid(column=1, row=index + 1,
+                                   stick="ew", padx=10, pady=5)
+        reserves.append(("🚫 " + _class, check_var_sem_reserva, check_btn_sem_reserva))
+
+    # Header Checkbutton for "Reservas" (select all)
+    check_var_all_reservas = tk.BooleanVar()
+    check_btn_all_reservas = ttk.Checkbutton(
+        rb_group, text="Reservas",
+        variable=check_var_all_reservas,
+        command=lambda: ([r[1].set(check_var_all_reservas.get())
+                         for r in reserves if not r[0].startswith("🚫")], callback()),
+        bootstyle="success-round-toggle")
+    check_btn_all_reservas.grid(column=0, row=0,
+                                stick="ew", padx=10, pady=5)
+
+    # Header Checkbutton for "Sem Reservas" (select all)
+    check_var_all_sem_reservas = tk.BooleanVar()
+    check_btn_all_sem_reservas = ttk.Checkbutton(
+        rb_group, text="Sem Reservas",
+        variable=check_var_all_sem_reservas,
+        command=lambda: ([r[1].set(check_var_all_sem_reservas.get())
+                         for r in reserves if r[0].startswith("🚫")], callback()),
+        bootstyle="danger-round-toggle")
+    check_btn_all_sem_reservas.grid(column=1, row=0,
+                                    stick="ew", padx=10, pady=5)
+
+    rb_group.pack(fill="both", expand=True, padx=0, pady=0)
+    return (reserves, sr)
 
 # pylint: disable=too-many-instance-attributes
+
+
 class RegistrationApp(tk.Tk):
     """
     The main application class for the meal registration system.
@@ -76,7 +146,7 @@ class RegistrationApp(tk.Tk):
 
     def _configure_style(self):
         """Configures the ttkbootstrap style for the application."""
-        self.style = ttk.Style(theme='minty')
+        self.style = ttk.Style(theme='darkly')
         colors = self.style.colors
         self.style.configure('Treeview', font=(None, 11), rowheight=35)
         self.colors = colors  # Store colors for later use
@@ -89,11 +159,11 @@ class RegistrationApp(tk.Tk):
             Tableview: The configured tableview widget.
         """
         coldata = [
-            {"text": "Prontuário", "stretch": False},
-            {"text": "Nome completo", "width": 200, "stretch": True},
-            {"text": "Turma", "stretch": False},
-            {"text": "Hora", "stretch": False},
-            {"text": "Prato", "width": 100, "stretch": True},
+            {"text": "🆔 Prontuário", "stretch": False},
+            {"text": "✍️ Nome completo", "width": 200, "stretch": True},
+            {"text": "👥 Turma", "stretch": False},
+            {"text": "⏱️ Hora", "stretch": False},
+            {"text": "🍽️ Prato", "width": 100, "stretch": True},
         ]
         tbv_frame = ttk.Frame(master=self)
         panel = ttk.Frame(master=self)
@@ -110,7 +180,7 @@ class RegistrationApp(tk.Tk):
             autofit=True,
             searchable=True,
             bootstyle='secondary',
-            stripecolor=(self.colors.light, None),
+            stripecolor=(self.colors.secondary, None),
         )
         table.pack(fill="both", pady=0, padx=0, expand=True)
         tbv_frame.grid(sticky="NEWS", column=1, row=2, padx=3, pady=2)
@@ -136,7 +206,7 @@ class RegistrationApp(tk.Tk):
         """
         self.discentes_reg = ttk.Label(
             master=panel,
-            text="Discentes registrados",
+            text="\U0001F464 Discentes registrados",
             font="-size 16 -weight bold"
         )
         self.discentes_reg.grid(sticky='NEWS', column=0, row=0)
@@ -179,31 +249,39 @@ class RegistrationApp(tk.Tk):
             ttk.Frame: The session management panel widget.
         """
         session_frame = ttk.Frame(master=self.notebook)
-        (self.list_turmas, classes_widget) = classes_section(session_frame)
+        (self.list_turmas, classes_widget) = classes_section(
+            session_frame, sorted(set(g.nome or 'Vazio' for g in
+                                      self._session.turma_crud.read_all())),
+            self.classes_callback)
+
         for (_, _, cbtn) in self.list_turmas:
             cbtn.configure(command=self.classes_callback)
-        classes_widget.pack(padx=10, pady=10)
+        classes_widget.pack(padx=10, pady=10, fill='both', expand=True)
 
         buttons_frame = ttk.Frame(master=session_frame)
+
         ttk.Button(
             master=buttons_frame,
-            text="Salvar e encerrar...",
+            text="\U0001F4E4  Salvar (xlsx)...",
+            command=self.export_xlsx
+        ).grid(column=0, row=0, padx=10, pady=10)
+
+        ttk.Button(
+            master=buttons_frame,
+            text="\U0001F6AA  Salvar e encerrar...",
             command=self.export_and_clear,
             bootstyle="danger",
-        ).pack(padx=10, pady=10, side="left")
-        ttk.Button(
-            master=buttons_frame,
-            text="Salvar (xlsx)...",
-            command=self.export_xlsx
-        ).pack(padx=10, pady=10, side="right")
+        ).grid(column=1, row=0, padx=10, pady=10)
+
         buttons_frame.pack(padx=10, pady=10)
+
         session_frame.pack(fill="both", expand=True)
         return session_frame
 
     def _add_notebook_tabs(self):
         """Adds the 'Registrar' and 'Sessão' tabs to the notebook."""
-        self.notebook.add(self._search_discente, text="Registrar")
-        self.notebook.add(self.sessao, text="Sessão")
+        self.notebook.add(self._search_discente, text="➕ Registrar")
+        self.notebook.add(self.sessao, text="📝 Sessão")
 
     def _load_existing_session(self):
         """
@@ -220,8 +298,10 @@ class RegistrationApp(tk.Tk):
                 self.table.insert_row(values=dis)
             self.table.load_table_data()
             groups = self._session.get_session_classes()
+
             for i in self.list_turmas:
-                i[1].set(i[0] in groups)
+                i[1].set(i[0].replace("🚫", "#") in groups)
+
             self.update_info()
             self.deiconify()
         else:
@@ -329,7 +409,7 @@ class RegistrationApp(tk.Tk):
         reg_num = len(self._session.get_served_students())
 
         self.discentes_reg.configure(
-            text=f"Discentes registrados: {reg_num}")
+            text=f"\U0001F464 Discentes registrados: {reg_num}")
         self.remaining.configure(
             text=f"{len(self._session.get_session_students()) - reg_num}")
 
@@ -340,8 +420,9 @@ class RegistrationApp(tk.Tk):
         Updates the session's selected classes and filters the displayed
         students accordingly.
         """
-        classes: List[str] = [class_ for class_, check,
+        classes: List[str] = [class_.replace('🚫', '#') for class_, check,
                               _ in self.list_turmas if check.get()]
+
         self._session.set_session_classes(classes)
         self._session.filter_students()
         self.update_info()

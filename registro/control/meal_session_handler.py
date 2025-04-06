@@ -60,7 +60,8 @@ class MealSessionHandler:
         self._session_id: Optional[int] = None
         self._date: Optional[str] = None
         self._meal_type: Optional[str] = None
-        self._turmas: Optional[List[str]] = None
+        self._turmas: Optional[Set[str]] = None
+        self._unreserved_turmas: Optional[Set[str]] = None
         self._served_meals: List[Tuple] = []
         self._current_session_pronts: Set[str] = set()
         self._filtered_discentes: List[Dict] = []
@@ -80,7 +81,8 @@ class MealSessionHandler:
         self._session_id = session_id
         self._date = date
         self._meal_type = meal_type
-        self._turmas = turmas
+        self._turmas = set(t.replace('Vazio', '') for t in turmas or [] if '#' not in t)
+        self._unreserved_turmas = set(t[2:].replace('Vazio', '') for t in turmas or [] if '#' in t)
 
     def get_served_registers(self):
         """
@@ -103,18 +105,17 @@ class MealSessionHandler:
         if self._date is None or self._turmas is None:
             return None
 
-        selected_turmas = set(self._turmas)
         filtered_students = []
         reserved_pronts = set()
 
         # Filter students with reservations
         self._filter_students_with_reservations(
-            selected_turmas, filtered_students, reserved_pronts)
+            self._turmas, filtered_students, reserved_pronts)
 
         # Add students without reservations if 'SEM RESERVA' is selected
-        if 'SEM RESERVA' in selected_turmas:
+        if self._unreserved_turmas:
             self._add_students_without_reservations(
-                filtered_students, reserved_pronts, selected_turmas)
+                filtered_students, reserved_pronts, self._unreserved_turmas)
 
         self._filtered_discentes = filtered_students
         return self._filtered_discentes

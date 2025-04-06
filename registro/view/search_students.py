@@ -60,12 +60,12 @@ class SearchStudents(ttk.Frame):
         self._entry.bind('<Return>', self.on_register)
         self._entry.grid(sticky="NEWS", column=0, row=0, padx=3, pady=2)
 
-        register_button = ttk.Button(search_bar, text='Registrar',
-                                     bootstyle='success', command=self.on_register)
+        register_button = ttk.Button(search_bar, text='\u2795',
+                         bootstyle='success', command=self.on_register)
         register_button.grid(sticky="NEWS", column=1, row=0, padx=3, pady=2)
 
         clear_button = ttk.Button(
-            search_bar, text='Limpar', command=lambda: self._entry_var.set(''), bootstyle='danger')
+            search_bar, text='\u26d4', command=lambda: self._entry_var.set(''), bootstyle='danger')
         clear_button.grid(sticky="NEWS", column=2, row=0, padx=3, pady=2)
 
         self.last_register = ttk.Label(search_bar, text='...')
@@ -320,8 +320,8 @@ class SearchStudents(ttk.Frame):
         tv.heading("#0", text='Code', anchor='w')
 
         self.cols = {
-            'nome': ('Discente', 260),
-            'mt': ('Inf.', 100),
+            'nome': ('🏷️ Discente', 260),
+            'mt': ('📄 Inf.', 100),
 
         }
         tv['columns'] = tuple(self.cols.keys())

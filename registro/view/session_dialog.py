@@ -23,8 +23,9 @@ from registro.control.utils import capitalize, load_json, save_json
 logger = logging.getLogger(__name__)
 
 
-def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]],
-                                                ttk.Labelframe]:
+def classes_section(master: tk.Widget, classes: List[str]
+                    ) -> tuple[list[tuple[str, tk.BooleanVar, ttk.Checkbutton]],
+                               ttk.Labelframe]:
     """
     Creates a section with checkbuttons for selecting classes.
 
@@ -36,11 +37,11 @@ def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, t
             - A list of tuples (class name, BooleanVar, Checkbutton).
             - The Labelframe containing the checkbuttons.
     """
-    rb_group = ttk.Labelframe(master, text="Turmas", padding=6)
+    rb_group = ttk.Labelframe(master, text="🎟️ Reservado", padding=6)
     rb_group.columnconfigure(tuple(range(3)), weight=1)
-    rb_group.rowconfigure(tuple(range(int((len(ANYTHING) + 2) / 3))), weight=1)
+    rb_group.rowconfigure(tuple(range(int((len(classes) + 2) / 3))), weight=1)
     chk = []
-    for i, t in enumerate(ANYTHING):
+    for i, t in enumerate(classes):
         without_reserve = t != 'SEM RESERVA'
         check_var = tk.BooleanVar(value=not without_reserve)
         check_btn = ttk.Checkbutton(
@@ -53,10 +54,12 @@ def classes_section(master: tk.Widget) -> tuple[list[tuple[str, tk.BooleanVar, t
     return (chk, rb_group)
 
 # pylint: disable=too-many-instance-attributes
+
+
 class SessionDialog(tk.Toplevel):
     """A dialog window for creating a new meal serving session."""
 
-    def __init__(self, title: str, callback, parent_: tk.Tk):
+    def __init__(self, title: str, callback, parent_: 'RegistrationApp'):
         """
         Initializes the SessionDialog.
 
@@ -73,7 +76,8 @@ class SessionDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.create_section_secao().pack(fill="both", padx=10, pady=10, expand=True)
 
-        (self._classes, class_widget) = classes_section(self)
+        (self._classes, class_widget) = classes_section(
+            self, sorted(set(g.nome or 'Vazio' for g in parent_._session.turma_crud.read_all())))
         class_widget.pack(padx=10, pady=10, expand=False)
 
         self.create_section_buttons().pack(fill="both", padx=10, pady=10, expand=True)
@@ -123,7 +127,7 @@ class SessionDialog(tk.Toplevel):
         if self._callback({
             "refeição": self._meal.get(),
             "lanche": self._snack.get(),
-            "período": '', #self._period.get(),
+            "período": '',  # self._period.get(),
             "data": self._date_entry.entry.get(),
             "hora": self._time_entry.get(),
             "groups": classes_list,
@@ -153,20 +157,20 @@ class SessionDialog(tk.Toplevel):
         Returns:
             ttk.Labelframe: The Labelframe containing the session details widgets.
         """
-        session_group = ttk.Labelframe(self, text="sessão", padding=10)
+        session_group = ttk.Labelframe(self, text="📝 Sessão", padding=10)
 
         session_group.columnconfigure(0, weight=0)
         session_group.columnconfigure(1, weight=1)
         session_group.columnconfigure(2, weight=0)
         session_group.rowconfigure((0, 1, 2, 3), weight=1)
 
-        ttk.Label(master=session_group, text="Horario").grid(
+        ttk.Label(master=session_group, text="⏰ Horario").grid(
             row=0, column=0, sticky="news", padx=3, pady=3)
 
-        ttk.Label(master=session_group, text="Refeição").grid(
+        ttk.Label(master=session_group, text="🍽️ Refeição").grid(
             row=1, column=0, sticky="news", padx=3, pady=3)
 
-        ttk.Label(master=session_group, text="Lanche").grid(
+        ttk.Label(master=session_group, text="🥪 Lanche").grid(
             row=2, column=0, sticky="news", padx=3, pady=3)
 
         # ttk.Label(master=session_group, text="Período").grid(
@@ -266,22 +270,22 @@ class SessionDialog(tk.Toplevel):
         session_buttons = tk.Frame(self)
 
         ttk.Button(master=session_buttons, text="Ok",
-                   command=self.on_okay, bootstyle="success-link").pack(side="right", padx=1)
+                   command=self.on_okay, bootstyle="success").pack(side="right", padx=1)
 
         ttk.Button(master=session_buttons, text="Cancelar",
-                   command=self.on_closing, bootstyle="danger-link").pack(side="right", padx=1)
+                   command=self.on_closing, bootstyle="danger").pack(side="right", padx=1)
 
-        ttk.Button(master=session_buttons, text="Limpar",
-                   command=self.on_clear, bootstyle="warning-link").pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="🗑️",
+                   command=self.on_clear, bootstyle="dark").pack(side="right", padx=(0, 5))
 
-        ttk.Button(master=session_buttons, text="Integrado",
-                   command=self.on_integral, bootstyle="link").pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="🔗",
+                   command=self.on_integral, bootstyle="dark").pack(side="right", padx=0)
 
-        ttk.Button(master=session_buttons, text="Inverter",
-                   command=self.on_invert, bootstyle="link").pack(side="right", padx=1)
+        ttk.Button(master=session_buttons, text="↔️",
+                   command=self.on_invert, bootstyle="dark").pack(side="right", padx=0)
 
         ttk.Button(master=session_buttons,
-                   text="Sync", command=self.sync, bootstyle="primary-link"
-                   ).pack(side="right", padx=1)
+                   text="📥", command=self.sync, bootstyle="warning"
+                   ).pack(side="right", padx=0)
 
         return session_buttons
