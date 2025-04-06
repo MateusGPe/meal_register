@@ -153,7 +153,7 @@ class SessionDialog(tk.Toplevel):
         Returns:
             ttk.Labelframe: The Labelframe containing the session details widgets.
         """
-        session_group = ttk.Labelframe(self, text="Seção", padding=10)
+        session_group = ttk.Labelframe(self, text="sessão", padding=10)
 
         session_group.columnconfigure(0, weight=0)
         session_group.columnconfigure(1, weight=1)

@@ -225,7 +225,7 @@ class RegistrationApp(tk.Tk):
             self.update_info()
             self.deiconify()
         else:
-            SessionDialog("Nova seção", self.new_session_callback, self)
+            SessionDialog("Nova sessão", self.new_session_callback, self)
 
     def get_session(self) -> SessionManager:
         """
