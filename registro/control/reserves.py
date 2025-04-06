@@ -198,8 +198,9 @@ def _find_new_students_groups(csv_file_path: str,
 
                     if pront not in new_students and pront not in existing_students:
                         new_students[pront] = {'pront': pront, 'nome': nome}
-                        if turma_nome not in existing_groups:
-                            new_groups.add(turma_nome)
+
+                    if turma_nome not in existing_groups:
+                        new_groups.add(turma_nome)
 
                 except KeyError as e:
                     print(f"Missing key in row: {row}. Error: {e}")

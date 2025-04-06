@@ -47,29 +47,27 @@ def classes_section(master: tk.Widget, classes: List[str], callback
     sr = ttk.Labelframe(master, text="🎟️ Reservas", padding=6)
     rb_group = ScrolledFrame(sr, autohide=True)
 
-    rb_group.columnconfigure((0, 1), weight=1)  # Configure two columns
+    rb_group.columnconfigure((0, 1), weight=1)
 
     reserves = []
-    for index, _class in enumerate(classes):
-        # "Reservas" option
+    for _class in enumerate(classes):
         check_var_reserva = tk.BooleanVar()
         check_btn_reserva = ttk.Checkbutton(
-            rb_group, text=_class, variable=check_var_reserva,
+            rb_group, text=_class[1], variable=check_var_reserva,
             bootstyle="success-round-toggle")
-        check_btn_reserva.grid(column=0, row=index + 1,
+        check_btn_reserva.grid(column=0, row=_class[0] + 1,
                                stick="ew", padx=10, pady=5)
-        reserves.append((_class, check_var_reserva, check_btn_reserva))
+        
+        reserves.append((_class[1], check_var_reserva, check_btn_reserva))
 
-        # "Sem Reservas" option
         check_var_sem_reserva = tk.BooleanVar()
         check_btn_sem_reserva = ttk.Checkbutton(
-            rb_group, text="🚫 " + _class, variable=check_var_sem_reserva,
+            rb_group, text="🚫 " + _class[1], variable=check_var_sem_reserva,
             bootstyle="danger-round-toggle")
-        check_btn_sem_reserva.grid(column=1, row=index + 1,
+        check_btn_sem_reserva.grid(column=1, row=_class[0] + 1,
                                    stick="ew", padx=10, pady=5)
-        reserves.append(("🚫 " + _class, check_var_sem_reserva, check_btn_sem_reserva))
+        reserves.append(("🚫 " + _class[1], check_var_sem_reserva, check_btn_sem_reserva))
 
-    # Header Checkbutton for "Reservas" (select all)
     check_var_all_reservas = tk.BooleanVar()
     check_btn_all_reservas = ttk.Checkbutton(
         rb_group, text="Reservas",
@@ -80,7 +78,6 @@ def classes_section(master: tk.Widget, classes: List[str], callback
     check_btn_all_reservas.grid(column=0, row=0,
                                 stick="ew", padx=10, pady=5)
 
-    # Header Checkbutton for "Sem Reservas" (select all)
     check_var_all_sem_reservas = tk.BooleanVar()
     check_btn_all_sem_reservas = ttk.Checkbutton(
         rb_group, text="Sem Reservas",

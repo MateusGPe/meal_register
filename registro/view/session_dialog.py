@@ -16,7 +16,7 @@ from typing import List
 
 import ttkbootstrap as ttk
 
-from registro.control.constants import ANYTHING, INTEGRATE_CLASSES
+from registro.control.constants import INTEGRATE_CLASSES
 from registro.control.sync_thread import SyncReserves
 from registro.control.utils import capitalize, load_json, save_json
 
@@ -78,7 +78,7 @@ class SessionDialog(tk.Toplevel):
 
         (self._classes, class_widget) = classes_section(
             self, sorted(set(g.nome or 'Vazio' for g in parent_._session.turma_crud.read_all())))
-        class_widget.pack(padx=10, pady=10, expand=False)
+        class_widget.pack(padx=10, pady=10, fill='both', expand=True)
 
         self.create_section_buttons().pack(fill="both", padx=10, pady=10, expand=True)
 
