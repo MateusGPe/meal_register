@@ -108,6 +108,7 @@ class SessionMetadataManager:
         """
         if session_id:
             _session_info = {"session_id": session_id}
+            self._session_id = session_id
             self.save_session()
         else:
             _session_info = load_json(SESSION_PATH)

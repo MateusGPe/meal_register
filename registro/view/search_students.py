@@ -330,7 +330,7 @@ class SearchStudents(ttk.Frame):
         }
 
         for k, v in self.cols.items():
-            tv.column(k, anchor='w', stretch='no', width=v[1])
+            tv.column(k, anchor='w', stretch='yes', width=v[1])
             tv.heading(k, text=v[0],
                        command=partial(self.sort_treeview, tv, k, False))
 

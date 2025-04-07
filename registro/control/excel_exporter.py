@@ -49,17 +49,13 @@ def export_to_excel(
             docs_path, f"{meal_type.lower()} {safe_date_time}.xlsx")
 
         workbook = xlsxwriter.Workbook(last_exported_path)
-        # Use a slightly shorter name for the worksheet if filename is too long
         worksheet_name = f"{meal_type} {safe_date_time}"[
-            :31]  # Excel limit
+            :31] 
         worksheet = workbook.add_worksheet(worksheet_name)
 
-        # Optional: Add formatting for header
         header_format = workbook.add_format({'bold': True})
 
-        # Write header
         for hcol, item in enumerate(EXPORT_HEADER):
-            # Use row 0 for header
             worksheet.write(0, hcol, item, header_format)
 
         # Write data rows
@@ -83,7 +79,7 @@ def export_to_excel(
         worksheet.set_column('B:B', 12)  # Data
         worksheet.set_column('C:C', 40)  # Nome
         worksheet.set_column('D:D', 20)  # Turma
-        worksheet.set_column('E:E', 30)  # Refeição
+        worksheet.set_column('E:E', 45)  # Refeição
         worksheet.set_column('F:F', 10)  # Hora
 
         workbook.close()

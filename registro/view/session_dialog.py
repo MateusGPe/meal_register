@@ -40,7 +40,8 @@ def classes_section(master: tk.Widget, classes: List[str]
     """
     rb_group = ttk.Labelframe(master, text="🎟️ Reservado", padding=6)
     rb_group.columnconfigure(tuple(range(3)), weight=1)
-    rb_group.rowconfigure(tuple(range(int((len(classes) + 2) / 3)) or [1]), weight=1)
+    rb_group.rowconfigure(
+        tuple(range(int((len(classes) + 2) / 3)) or [1]), weight=1)
     chk = []
     if not classes:
         logger.warning("No classes available to create checkbuttons.")
@@ -81,14 +82,16 @@ class SessionDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.create_section_secao().grid(column=0, row=0, padx=10, pady=10, sticky='nswe')
 
-        classes = sorted(set(g.nome or 'Vazio' for g in parent_._session.turma_crud.read_all()))
+        classes = sorted(
+            set(g.nome or 'Vazio' for g in parent_._session.turma_crud.read_all()))
 
         self._classes = None
         if classes:
             (self._classes, class_widget) = classes_section(self, classes)
             class_widget.grid(column=0, row=1, padx=10, pady=10, sticky='nswe')
         self.group_count: int
-        self.create_section_buttons().grid(column=0, row=2, padx=10, pady=10, sticky='nswe')
+        self.create_section_buttons().grid(
+            column=0, row=2, padx=10, pady=10, sticky='nswe')
 
     def on_closing(self):
         """Handles the event when the dialog window is closed."""
@@ -208,7 +211,7 @@ class SessionDialog(tk.Toplevel):
         ttk.Label(master=session_group, text="🥪 Lanche").grid(
             row=2, column=0, sticky="news", padx=3, pady=3)
 
-        ttk.Label(master=session_group, text="📝 Editar sessão").grid(
+        ttk.Label(master=session_group, text="📝 Editar sessão", bootstyle='warning-inverse').grid(
             row=3, column=0, sticky="news", padx=3, pady=3)
 
         self._time_entry = ttk.Entry(session_group)
@@ -258,14 +261,17 @@ class SessionDialog(tk.Toplevel):
         sessions: List[Session] = self.__parent.get_session(
         ).metadata_manager.session_crud.read_all()
 
-        sessions_ids = {f"{s.data} {s.hora} - {s.refeicao.capitalize()}": s.id for s in sessions}
+        sessions_ids = {
+            f"{s.data} {s.hora} - {s.refeicao.capitalize()}": s.id for s in sessions}
         session_cb = ttk.Combobox(
             master=session_group,
             values=list(sessions_ids.keys()),
             bootstyle='dark',
         )
         session_cb.configure(state="readonly")
-        session_cb.current(0)
+        if len(sessions_ids):
+            session_cb.current(0)
+
         session_cb.grid(row=3, column=1, columnspan=2,
                         sticky="news", padx=3, pady=3)
 
@@ -280,7 +286,8 @@ class SessionDialog(tk.Toplevel):
 
         Starts a background thread to perform the synchronization and monitors its progress.
         """
-        self.group_count = len(self.__parent.get_session().turma_crud.read_all())
+        self.group_count = len(
+            self.__parent.get_session().turma_crud.read_all())
         thread = SyncReserves(self.__parent.get_session())
         thread.start()
         self.sync_monitor(thread)
@@ -301,7 +308,8 @@ class SessionDialog(tk.Toplevel):
                     message='Houve um erro ao sincronizar.\n'
                     'Reinicie o aplicativo, verifique a conexão, e tente novamente.')
             else:
-                group_count = len(self.__parent.get_session().turma_crud.read_all())
+                group_count = len(
+                    self.__parent.get_session().turma_crud.read_all())
                 if self.group_count != group_count:
                     messagebox.showinfo(
                         title='Registros',

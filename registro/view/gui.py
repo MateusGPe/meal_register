@@ -66,7 +66,8 @@ def classes_section(master: tk.Widget, classes: List[str], callback
             bootstyle="warning-round-toggle")
         check_btn_sem_reserva.grid(column=1, row=_class[0] + 1,
                                    stick="ew", padx=10, pady=5)
-        reserves.append(("➕ " + _class[1], check_var_sem_reserva, check_btn_sem_reserva))
+        reserves.append(
+            ("➕ " + _class[1], check_var_sem_reserva, check_btn_sem_reserva))
 
     check_var_all_reservas = tk.BooleanVar()
     check_btn_all_reservas = ttk.Checkbutton(
@@ -298,9 +299,7 @@ class RegistrationApp(tk.Tk):
 
             for i in self.list_turmas:
                 i[1].set(i[0].replace("➕", "#") in groups)
-        # sessions: List[Session] = self.__parent.get_session(
-        # ).metadata_manager.session_crud.read_all()
-        # sessions_ids = {f"{s.data} {s.hora} - {s.refeicao.capitalize()}": s.id for s in sessions}
+
             self.update_info()
             self.title(f"Registro: {self._session.get_meal_type().capitalize()} - "
                        f"{self._session.get_date()} {self._session.get_time()}")
@@ -507,9 +506,9 @@ def main():
             pass
 
     os.makedirs(os.path.abspath('./config'), exist_ok=True)
-    try:
-        RegistrationApp("Registro")
-    except TclError as e:
-        print(f"TclError during application startup: {e}")
-        messagebox.showerror("Erro de inicialização",
-                             "Ocorreu um erro ao iniciar a aplicação.")
+    #try:
+    RegistrationApp("Registro")
+    #except TclError as e:
+    #    print(f"TclError during application startup {type(e).__name__}: {e}")
+    #    messagebox.showerror("Erro de inicialização",
+    #                         "Ocorreu um erro ao iniciar a aplicação.")
