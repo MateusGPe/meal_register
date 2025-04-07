@@ -69,6 +69,20 @@ class Student(Base):
 # pylint: disable=too-few-public-methods
 
 
+class Snack(Base):
+    """Represents the snack table."""
+    __tablename__ = "snack"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+
+    def __repr__(self):
+        """Returns a string representation of the Snack object."""
+        return f"<Snack(name='{self.name!r}')>"
+
+# pylint: disable=too-few-public-methods
+
+
 class Reserve(Base):
     """Represents the reserve table in the database."""
     __tablename__ = "reserve"

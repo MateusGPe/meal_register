@@ -74,9 +74,11 @@ def _process_reserve_row(
         turma = row['turma']
         dish = row['dish']
         data = row['data']
+
         if pront not in new_students_data and pront not in existing_students_pronts:
             new_students_data[pront] = {
                 'pront': pront, 'nome': nome, 'turma': turma}
+
         csv_reserves_data.append({
             'pront': pront, 'dish': dish, 'data': data, 'snacks': False,
             'canceled': False})
@@ -85,7 +87,7 @@ def _process_reserve_row(
     except csv.Error as e:
         print(f"Error parsing CSV: {e}")
     except SQLAlchemyError as e:
-        print(f"Database error: {e}")
+        print(f"Database error (_process_reserve_row): {e}")
 
 
 def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
@@ -146,11 +148,12 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
         return False
     except SQLAlchemyError as e:
         student_crud.rollback()
-        print(f"Database error: {e}")
+        print(f"Database error (import_reserves_csv): {e}")
         return False
     except (TypeError, ValueError) as e:
         print(f"Invalid data: {e}")
         return False
+
 
 def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
                    data: str, dish: str) -> bool:
@@ -181,16 +184,34 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
                 'canceled': False,
                 'student_id': student.id
             })
+
         reserve_crud.bulk_create(reserves_to_insert)
         reserve_crud.commit()
+
         return True
+
     except SQLAlchemyError as e:
         reserve_crud.rollback()
-        print(f"Database error: {e}")
+        print(f"Database error (reserve_snacks): {e}")
         return False
     except (TypeError, ValueError) as e:
         print(f"Invalid data: {e}")
         return False
+
+
+def _associate_students_with_groups(student_crud: CRUD[Student], turma_crud: CRUD[Group],
+                                    students_groups: List[Tuple[str, str]]):
+    all_groups: Dict[str, Group] = {t.nome: t for t in turma_crud.read_all()}
+    all_students: Dict[str, Student] = {
+        s.pront: s for s in student_crud.read_all()
+    }
+    for pront, group_name in students_groups:
+        if pront in all_students and group_name in all_groups:
+            student = all_students[pront]
+            group = all_groups[group_name]
+            if group not in student.groups:
+                student.groups.append(group)
+    student_crud.commit()
 
 
 def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
@@ -236,9 +257,10 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
                         row.pop('turma')
                         new_students[pront] = row
 
-                    students_groups.add((pront, group_name))
+                    if group_name:
+                        students_groups.add((pront, group_name))
+                        new_groups.add(group_name)
 
-                    new_groups.add(group_name)
                 except KeyError as e:
                     print(f"Missing key in row: {row}. Error: {e}")
                 except (TypeError, ValueError) as e:
@@ -246,20 +268,16 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
 
             new_groups.difference_update(set(t.nome for t in turma_crud.read_all()))
 
-            turma_crud.bulk_create([{'nome': name} for name in new_groups])
-            student_crud.bulk_create(list(new_students.values()))
+            if new_groups:
+                turma_crud.bulk_create([{'nome': name} for name in new_groups])
 
-            all_groups: Dict[str, Group] = {t.nome: t for t in turma_crud.read_all()}
-            all_students: Dict[str, Student] = {
-                s.pront: s for s in student_crud.read_all()
-            }
-            for pront, group_name in students_groups:
-                if pront in all_students and group_name in all_groups:
-                    student = all_students[pront]
-                    group = all_groups[group_name]
+            if new_students:
+                student_crud.bulk_create(list(new_students.values()))
 
-                    if group not in student.groups:
-                        student.groups.append(group)
+            _associate_students_with_groups(
+                student_crud, turma_crud, students_groups)
+
+            print(f"Successfully imported data from {csv_file_path}")
         return True
 
     except FileNotFoundError:
@@ -270,7 +288,7 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
         return False
     except SQLAlchemyError as e:
         student_crud.get_session().rollback()
-        print(f"Database error: {e}")
+        print(f"Database error (import_students_csv): {e}")
         return False
     except (TypeError, ValueError) as e:
         print(f"Invalid data: {e}")

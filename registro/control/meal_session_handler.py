@@ -319,16 +319,16 @@ class MealSessionHandler:
         student_ids: Set[int] = {consumption.student_id for consumption in served_consumptions}
         reserve_ids: Set[int] = {
             consumption.reserve_id for consumption in served_consumptions
-            if consumption.reserve_id is not None}
+            if consumption.reserve_id}
 
         students: List[Student] = self.student_crud.get_session().query(Student).filter(
-            Student.id.in_(list(student_ids)))
+            Student.id.in_(list(student_ids))) if student_ids else []
 
         reserves: List[Reserve] = self.student_crud.get_session().query(Reserve).filter(
             Reserve.id.in_(list(reserve_ids))) if reserve_ids else []
 
-        student_map: Dict[int, Student] = {student.id: student for student in students}
-        reserve_map: Dict[int, Reserve] = {reserve.id: reserve for reserve in reserves}
+        student_map: Dict[int, Student] = {student.id: student for student in students if student}
+        reserve_map: Dict[int, Reserve] = {reserve.id: reserve for reserve in reserves if reserve}
 
         served_students_data: List[Tuple[str, str, str, str, str]] = []
         served_pronts: Set[str] = set()

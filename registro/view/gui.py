@@ -14,7 +14,7 @@ import os
 import platform
 import tkinter as tk
 from tkinter import TclError, messagebox
-from typing import List
+from typing import List, Optional, Union
 from ttkbootstrap.scrolled import ScrolledFrame
 import ttkbootstrap as ttk
 from ttkbootstrap.tableview import Tableview
@@ -280,7 +280,7 @@ class RegistrationApp(tk.Tk):
         self.notebook.add(self._search_discente, text="➕ Registrar")
         self.notebook.add(self.sessao, text="📝 Sessão")
 
-    def _load_existing_session(self):
+    def _load_existing_session(self, session_id: Optional[int] = None):
         """
         Loads existing session data if available.
 
@@ -288,7 +288,7 @@ class RegistrationApp(tk.Tk):
         and displays the main window. Otherwise, opens a dialog to create
         a new session.
         """
-        if self._session.load_session() is not None:
+        if self._session.load_session(session_id):
             self._session.filter_students()
             servidos = self._session.get_served_students()
             for dis in servidos:
@@ -298,11 +298,17 @@ class RegistrationApp(tk.Tk):
 
             for i in self.list_turmas:
                 i[1].set(i[0].replace("➕", "#") in groups)
-
+        # sessions: List[Session] = self.__parent.get_session(
+        # ).metadata_manager.session_crud.read_all()
+        # sessions_ids = {f"{s.data} {s.hora} - {s.refeicao.capitalize()}": s.id for s in sessions}
             self.update_info()
+            self.title(f"Registro: {self._session.get_meal_type().capitalize()} - "
+                       f"{self._session.get_date()} {self._session.get_time()}")
             self.deiconify()
-        else:
+        elif not session_id:
             SessionDialog("Nova sessão", self.new_session_callback, self)
+        else:
+            raise ValueError("Invalid session ID")
 
     def get_session(self) -> SessionManager:
         """
@@ -323,11 +329,14 @@ class RegistrationApp(tk.Tk):
         Returns:
             bool: True if the export was successful, False otherwise.
         """
-        self.sync_session()
-        result = export_to_excel(self._session.get_served_students(),
-                                 self._session.get_meal_type(),
-                                 self._session.get_date(),
-                                 self._session.get_time())
+        served_meals_data = self._session.get_served_students()
+        result = None
+        if served_meals_data:
+            self.sync_session()
+            result = export_to_excel(served_meals_data,
+                                     self._session.get_meal_type(),
+                                     self._session.get_date(),
+                                     self._session.get_time())
         if result:
             messagebox.showinfo(
                 message=f"O arquivo foi salvo em Documentos:\n{result}",
@@ -404,11 +413,13 @@ class RegistrationApp(tk.Tk):
         Updates the number of registered students and the remaining count.
         """
         reg_num = len(self._session.get_served_students())
+        students = self._session.get_session_students()
+        students = set(s['Pront'] for s in students)
 
         self.discentes_reg.configure(
             text=f"\U0001F464 Discentes registrados: {reg_num}")
         self.remaining.configure(
-            text=f"{len(self._session.get_session_students()) - reg_num}")
+            text=f"{len(students) - reg_num}")
 
     def classes_callback(self):
         """
@@ -424,7 +435,7 @@ class RegistrationApp(tk.Tk):
         self._session.filter_students()
         self.update_info()
 
-    def new_session_callback(self, result: SESSION) -> bool:
+    def new_session_callback(self, result: Union[SESSION, int]) -> bool:
         """
         Callback function for the new session dialog.
 
@@ -444,7 +455,7 @@ class RegistrationApp(tk.Tk):
         self.destroy()
         return True
 
-    def _process_new_session(self, result: SESSION) -> bool:
+    def _process_new_session(self, result: Union[SESSION, int]) -> bool:
         """
         Processes the data from the new session dialog.
 
@@ -454,14 +465,23 @@ class RegistrationApp(tk.Tk):
         Returns:
             bool: True if the session was successfully created, False otherwise.
         """
-        if not self._session.new_session(result):
-            return False
+        if isinstance(result, int):
+            self._load_existing_session(result)
+            self.update_info()
+            self.title(f"Registro: {self._session.get_meal_type().capitalize()} - "
+                       f"{self._session.get_date()} {self._session.get_time()}")
+            self.deiconify()
+            return True
 
-        self._session.filter_students()
-        self._update_class_checkboxes(result['groups'])
-        self.update_info()
-        self.deiconify()
-        return True
+        if self._session.new_session(result):
+            self._session.filter_students()
+            self._update_class_checkboxes(result['groups'])
+            self.update_info()
+            self.title(f"Registro: {self._session.get_meal_type().capitalize()} - "
+                       f"{self._session.get_date()} {self._session.get_time()}")
+            self.deiconify()
+            return True
+        return False
 
     def _update_class_checkboxes(self, selected_classes: List[str]):
         """

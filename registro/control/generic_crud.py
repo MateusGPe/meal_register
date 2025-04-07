@@ -236,8 +236,10 @@ class CRUD(Generic[MODEL]):
             bool: True if the records were successfully created, False otherwise.
         """
         try:
-            self._db_session.execute(insert(self._model), rows)
-            self._db_session.commit()
+            if rows:
+                self._db_session.execute(insert(self._model), rows)
+                self._db_session.commit()
+
             return True
         except DBAPIError as e:
             self._db_session.rollback()

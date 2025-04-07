@@ -98,7 +98,7 @@ class SessionMetadataManager:
         """
         return self._hora
 
-    def load_session(self) -> Optional[dict]:
+    def load_session(self, session_id: Optional[int] = None) -> Optional[dict]:
         """
         Loads session information from the session file.
 
@@ -106,10 +106,14 @@ class SessionMetadataManager:
             Optional[dict]: A dictionary containing the loaded session information,
                             or None if the file cannot be loaded or the session ID is invalid.
         """
-        _session_info = load_json(SESSION_PATH)
+        if session_id:
+            _session_info = {"session_id": session_id}
+            self.save_session()
+        else:
+            _session_info = load_json(SESSION_PATH)
 
-        if _session_info is None:
-            return None
+            if _session_info is None:
+                return None
 
         self._session_id = _session_info.get("session_id", -1)
 

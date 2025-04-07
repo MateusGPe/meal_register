@@ -19,6 +19,7 @@ import ttkbootstrap as ttk
 from registro.control.constants import INTEGRATE_CLASSES
 from registro.control.sync_thread import SyncReserves
 from registro.control.utils import capitalize, load_json, save_json
+from registro.model.tables import Session
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class SessionDialog(tk.Toplevel):
         if classes:
             (self._classes, class_widget) = classes_section(self, classes)
             class_widget.grid(column=0, row=1, padx=10, pady=10, sticky='nswe')
-
+        self.group_count: int
         self.create_section_buttons().grid(column=0, row=2, padx=10, pady=10, sticky='nswe')
 
     def on_closing(self):
@@ -123,6 +124,25 @@ class SessionDialog(tk.Toplevel):
             return
         for _, cbtn, _ in self._classes:
             cbtn.set(not cbtn.get())
+
+    def on_session(self, *_):
+        """
+        Handles the OK button click, collects session data, and calls the callback.
+
+        Collects data such as meal type, snack, period, date, time, and selected classes.
+        If the data is valid, calls the callback with the session ID and closes the dialog.
+        Otherwise, displays a message box with an error message.
+        """
+        session_id = self._sessions_edit[1].get(self._sessions_edit[0].get())
+        if not session_id:
+            pass
+        elif self._callback(session_id):
+            self.grab_release()
+            self.destroy()
+            return
+
+        messagebox.showinfo(
+            message='Nenhuma reserva foi feita.\nTente fazer o download.', title='Registro')
 
     def on_okay(self):
         """
@@ -188,8 +208,8 @@ class SessionDialog(tk.Toplevel):
         ttk.Label(master=session_group, text="🥪 Lanche").grid(
             row=2, column=0, sticky="news", padx=3, pady=3)
 
-        # ttk.Label(master=session_group, text="Período").grid(
-        #     row=3, column=0, sticky="news", padx=3, pady=3)
+        ttk.Label(master=session_group, text="📝 Editar sessão").grid(
+            row=3, column=0, sticky="news", padx=3, pady=3)
 
         self._time_entry = ttk.Entry(session_group)
         self._time_entry.insert(0, datetime.now().strftime("%H:%M"))
@@ -209,6 +229,7 @@ class SessionDialog(tk.Toplevel):
             bootstyle='danger'
         )
 
+        self._meal.configure(state="readonly")
         self._meal.current(default_meal)
         self._meal.grid(row=1, column=1, columnspan=2,
                         sticky="news", padx=3, pady=3)
@@ -234,15 +255,23 @@ class SessionDialog(tk.Toplevel):
         self._snack.grid(row=2, column=1, columnspan=2,
                          sticky="news", padx=3, pady=3)
 
-        # self._period = ttk.Combobox(
-        #     master=session_group,
-        #     text="Integral",
-        #     values=["Integral", "Matutino", "Vespertino", "Noturno"],
-        # )
-        # self._period.current(0)
-        # self._period.grid(row=3, column=1, columnspan=2,
-        #                   sticky="news", padx=3, pady=3)
+        sessions: List[Session] = self.__parent.get_session(
+        ).metadata_manager.session_crud.read_all()
 
+        sessions_ids = {f"{s.data} {s.hora} - {s.refeicao.capitalize()}": s.id for s in sessions}
+        session_cb = ttk.Combobox(
+            master=session_group,
+            values=list(sessions_ids.keys()),
+            bootstyle='dark',
+        )
+        session_cb.configure(state="readonly")
+        session_cb.current(0)
+        session_cb.grid(row=3, column=1, columnspan=2,
+                        sticky="news", padx=3, pady=3)
+
+        session_cb.bind('<<ComboboxSelected>>', self.on_session)
+
+        self._sessions_edit = (session_cb, sessions_ids)
         return session_group
 
     def sync(self):
@@ -251,6 +280,7 @@ class SessionDialog(tk.Toplevel):
 
         Starts a background thread to perform the synchronization and monitors its progress.
         """
+        self.group_count = len(self.__parent.get_session().turma_crud.read_all())
         thread = SyncReserves(self.__parent.get_session())
         thread.start()
         self.sync_monitor(thread)
@@ -271,11 +301,17 @@ class SessionDialog(tk.Toplevel):
                     message='Houve um erro ao sincronizar.\n'
                     'Reinicie o aplicativo, verifique a conexão, e tente novamente.')
             else:
-                messagebox.showinfo(
-                    title='Registros',
-                    message='Os dados foram sincronizados com sucesso.\n'
-                    'Reinicie o aplicativo para aplicar as mudanças.')
-                self.on_closing()
+                group_count = len(self.__parent.get_session().turma_crud.read_all())
+                if self.group_count != group_count:
+                    messagebox.showinfo(
+                        title='Registros',
+                        message='Os dados foram sincronizados com sucesso.\n'
+                        'Reinicie o aplicativo para aplicar as mudanças.')
+                    self.on_closing()
+                else:
+                    messagebox.showinfo(
+                        title='Registros',
+                        message='Os dados foram sincronizados com sucesso.')
 
     def create_section_buttons(self) -> tk.Frame:
         """
@@ -293,13 +329,13 @@ class SessionDialog(tk.Toplevel):
                    command=self.on_closing, bootstyle="danger").pack(side="right", padx=1)
 
         ttk.Button(master=session_buttons, text="🗑️",
-                   command=self.on_clear, bootstyle="dark").pack(side="right", padx=(0, 5))
+                   command=self.on_clear, bootstyle="light").pack(side="right", padx=(0, 5))
 
         ttk.Button(master=session_buttons, text="🔗",
-                   command=self.on_integral, bootstyle="dark").pack(side="right", padx=0)
+                   command=self.on_integral, bootstyle="light").pack(side="right", padx=0)
 
         ttk.Button(master=session_buttons, text="↔️",
-                   command=self.on_invert, bootstyle="dark").pack(side="right", padx=0)
+                   command=self.on_invert, bootstyle="light").pack(side="right", padx=0)
 
         ttk.Button(master=session_buttons,
                    text="📥", command=self.sync, bootstyle="warning"

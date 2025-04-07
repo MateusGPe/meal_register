@@ -82,7 +82,7 @@ class SessionManager:
         """
         return self.meal_handler.get_served_registers()
 
-    def filter_students(self):
+    def filter_students(self, session_id: Optional[int] = None):
         """
         Loads reserves and filters students based on selected classes.
 
@@ -90,7 +90,7 @@ class SessionManager:
             Optional[List[Dict]]: A list of dictionaries containing student
             information, or None if no session information is available.
         """
-        session_info = self.metadata_manager.load_session()
+        session_info = self.metadata_manager.load_session(session_id)
         if session_info is None:
             return None
         self.meal_handler.set_session_info(
@@ -125,7 +125,7 @@ class SessionManager:
         """
         return self.meal_handler.delete_student(student)
 
-    def load_session(self) -> Optional[dict]:
+    def load_session(self, session_id: Optional[int] = None) -> Optional[dict]:
         """
         Loads session information from the session file.
 
@@ -133,7 +133,7 @@ class SessionManager:
             Optional[dict]: A dictionary containing session information,
             or None if no session is loaded.
         """
-        return self.metadata_manager.load_session()
+        return self.metadata_manager.load_session(session_id)
 
     def save_session(self) -> bool:
         """

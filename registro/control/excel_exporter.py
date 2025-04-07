@@ -81,9 +81,9 @@ def export_to_excel(
         # Optional: Adjust column widths
         worksheet.set_column('A:A', 12)  # Matrícula
         worksheet.set_column('B:B', 12)  # Data
-        worksheet.set_column('C:C', 30)  # Nome
+        worksheet.set_column('C:C', 40)  # Nome
         worksheet.set_column('D:D', 20)  # Turma
-        worksheet.set_column('E:E', 15)  # Refeição
+        worksheet.set_column('E:E', 30)  # Refeição
         worksheet.set_column('F:F', 10)  # Hora
 
         workbook.close()
