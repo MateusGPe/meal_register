@@ -204,7 +204,7 @@ class RegistrationApp(tk.Tk):
         """
         self.discentes_reg = ttk.Label(
             master=panel,
-            text="\U0001F464 Discentes registrados",
+            text="👤 Discentes registrados",
             font="-size 16 -weight bold"
         )
         self.discentes_reg.grid(sticky='NEWS', column=0, row=0)
@@ -260,13 +260,13 @@ class RegistrationApp(tk.Tk):
 
         ttk.Button(
             master=buttons_frame,
-            text="\U0001F4E4  Salvar (xlsx)...",
+            text="📤 Salvar (xlsx)...",
             command=self.export_xlsx
         ).grid(column=0, row=0, padx=10, pady=10)
 
         ttk.Button(
             master=buttons_frame,
-            text="\U0001F6AA  Salvar e encerrar...",
+            text="🚪 Salvar e encerrar...",
             command=self.export_and_clear,
             bootstyle="danger",
         ).grid(column=1, row=0, padx=10, pady=10)
@@ -416,7 +416,7 @@ class RegistrationApp(tk.Tk):
         students = set(s['Pront'] for s in students)
 
         self.discentes_reg.configure(
-            text=f"\U0001F464 Discentes registrados: {reg_num}")
+            text=f"👤 Discentes registrados: {reg_num}")
         self.remaining.configure(
             text=f"{len(students) - reg_num}")
 

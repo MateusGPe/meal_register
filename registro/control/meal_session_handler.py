@@ -81,8 +81,10 @@ class MealSessionHandler:
         self._session_id = session_id
         self._date = date
         self._meal_type = meal_type
-        self._turmas = set(t.replace('Vazio', '') for t in turmas or [] if '#' not in t)
-        self._unreserved_turmas = set(t[2:].replace('Vazio', '') for t in turmas or [] if '#' in t)
+        self._turmas = set(t.replace('Vazio', '')
+                           for t in turmas or [] if '#' not in t)
+        self._unreserved_turmas = set(t[2:].replace(
+            'Vazio', '') for t in turmas or [] if '#' in t)
 
     def get_served_registers(self):
         """
@@ -197,9 +199,9 @@ class MealSessionHandler:
             Student.nome,
             Group.nome,
             Student.id.label('student_id'),
-        ).join(Reserve, Reserve.student_id == Student.id).join(Student.groups).filter(
+        ).join(Student.groups).filter(
             Group.nome.in_(selected_turmas),
-            Student.pront.not_in(list(reserved_pronts))
+            Student.pront.not_in(reserved_pronts)
         ).all()
 
         processed_students = {}
@@ -316,7 +318,8 @@ class MealSessionHandler:
             self._current_session_pronts = set()
             return self._served_meals
 
-        student_ids: Set[int] = {consumption.student_id for consumption in served_consumptions}
+        student_ids: Set[int] = {
+            consumption.student_id for consumption in served_consumptions}
         reserve_ids: Set[int] = {
             consumption.reserve_id for consumption in served_consumptions
             if consumption.reserve_id}
@@ -327,8 +330,10 @@ class MealSessionHandler:
         reserves: List[Reserve] = self.student_crud.get_session().query(Reserve).filter(
             Reserve.id.in_(list(reserve_ids))) if reserve_ids else []
 
-        student_map: Dict[int, Student] = {student.id: student for student in students if student}
-        reserve_map: Dict[int, Reserve] = {reserve.id: reserve for reserve in reserves if reserve}
+        student_map: Dict[int, Student] = {
+            student.id: student for student in students if student}
+        reserve_map: Dict[int, Reserve] = {
+            reserve.id: reserve for reserve in reserves if reserve}
 
         served_students_data: List[Tuple[str, str, str, str, str]] = []
         served_pronts: Set[str] = set()
