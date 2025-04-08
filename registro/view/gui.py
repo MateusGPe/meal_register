@@ -506,9 +506,9 @@ def main():
             pass
 
     os.makedirs(os.path.abspath('./config'), exist_ok=True)
-    #try:
-    RegistrationApp("Registro")
-    #except TclError as e:
-    #    print(f"TclError during application startup {type(e).__name__}: {e}")
-    #    messagebox.showerror("Erro de inicialização",
-    #                         "Ocorreu um erro ao iniciar a aplicação.")
+    try:
+        RegistrationApp("Registro")
+    except TclError as e:
+        print(f"TclError during application startup {type(e).__name__}: {e}")
+        messagebox.showerror("Erro de inicialização",
+                             "Ocorreu um erro ao iniciar a aplicação.")

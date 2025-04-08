@@ -57,11 +57,17 @@ class SpreadsheetThread(Thread):
         rows_to_add = []
         for student in served_meals:
             try:
+                classes = student[2]
+                if 'MEC' in student[2] or 'MAC' in student[2]:
+                    classes = classes.split(',')
+                    classes = next(
+                        c for c in classes if 'MEC' in c or 'MAC' in c)
+
                 row = [
                     str(student[0]),
                     str(self._session.get_date()),
                     str(student[1]),
-                    str(student[2]),
+                    str(classes),
                     str(student[4]),
                     str(student[3])
                 ]
