@@ -133,10 +133,11 @@ class MealSessionHandler:
             filtered_students (List[Dict]): The list to append filtered student information.
             reserved_pronts (Set[str]): The set to add PRONTs of students with reservations.
         """
-        is_snack = self._meal_type.lower() == "lanche"
+        # is_snack = self._meal_type.lower() == "lanche"
         selected_classes_with_reserve = set(selected_turmas)
-        if 'SEM RESERVA' in selected_classes_with_reserve:
-            selected_classes_with_reserve.discard('SEM RESERVA')
+        if 'Vazio' in selected_classes_with_reserve:
+            selected_classes_with_reserve.discard('Vazio')
+            selected_classes_with_reserve.add('')
 
         results = self.student_crud.get_session(
         ).query(
@@ -148,8 +149,9 @@ class MealSessionHandler:
             Student.id.label('student_id'),
             Reserve.id.label('reserve_id')
         ).join(Reserve, Reserve.student_id == Student.id).join(Student.groups).filter(
-            Reserve.data == self._date,
-            Reserve.snacks == is_snack,
+            # Reserve.data == self._date,
+            # Reserve.snacks == is_snack,
+            Reserve.session_id == self._session_id,
             Group.nome.in_(selected_classes_with_reserve)
         ).all()
 
@@ -325,10 +327,10 @@ class MealSessionHandler:
             if consumption.reserve_id}
 
         students: List[Student] = self.student_crud.get_session().query(Student).filter(
-            Student.id.in_(list(student_ids))) if student_ids else []
+            Student.id.in_(student_ids)) if student_ids else []
 
         reserves: List[Reserve] = self.student_crud.get_session().query(Reserve).filter(
-            Reserve.id.in_(list(reserve_ids))) if reserve_ids else []
+            Reserve.id.in_(reserve_ids)) if reserve_ids else []
 
         student_map: Dict[int, Student] = {
             student.id: student for student in students if student}

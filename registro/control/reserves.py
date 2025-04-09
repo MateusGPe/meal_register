@@ -156,7 +156,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 
 
 def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
-                   data: str, dish: str) -> bool:
+                   data: str, dish: str, session_id: int) -> bool:
     """
     Reserves a specific snack for all students on a given date.
 
@@ -182,7 +182,8 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
                 'data': data,
                 'snacks': True,
                 'canceled': False,
-                'student_id': student.id
+                'student_id': student.id,
+                'session_id': session_id
             })
 
         reserve_crud.bulk_create(reserves_to_insert)

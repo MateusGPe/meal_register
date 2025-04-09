@@ -16,8 +16,10 @@ Base = declarative_base()
 student_group_association = Table(
     "student_group_association",
     Base.metadata,
-    Column("student_id", Integer, ForeignKey("students.id"), primary_key=True),
-    Column("group_id", Integer, ForeignKey("groups.id"), primary_key=True),
+    Column("student_id", Integer, ForeignKey(
+        "students.id", ondelete="RESTRICT"), primary_key=True),
+    Column("group_id", Integer, ForeignKey(
+        "groups.id", ondelete="RESTRICT"), primary_key=True),
 )
 
 # pylint: disable=too-few-public-methods
@@ -90,10 +92,14 @@ class Reserve(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     student_id: Mapped[int] = mapped_column(
         ForeignKey("students.id", ondelete="RESTRICT"))
-    dish: Mapped[Optional[str]] = mapped_column(String)
-    data: Mapped[str] = mapped_column(String)
+    session_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("session.id", ondelete="RESTRICT"))
+    dish: Mapped[Optional[str]] = mapped_column(String, nullable=False)
+    data: Mapped[str] = mapped_column(String, nullable=False)
     snacks: Mapped[bool] = mapped_column(Boolean, default=False)
     canceled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    session: Mapped["Session"] = relationship(back_populates="reserves")
 
     student: Mapped["Student"] = relationship(back_populates="reserves")
     consumption: Mapped[Optional["Consumption"]] = relationship(back_populates="reserve",
@@ -101,7 +107,7 @@ class Reserve(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "student_id", "data", "snacks", name="_pront_uc", sqlite_on_conflict="REPLACE"
+            "student_id", "data", "snacks", name="_pront_uc", sqlite_on_conflict="IGNORE"
         ),
     )
 
@@ -124,15 +130,18 @@ class Session(Base):
     periodo: Mapped[str] = mapped_column(String)
     data: Mapped[str] = mapped_column(String)
     hora: Mapped[str] = mapped_column(String)
+    snack_name: Mapped[str] = mapped_column(String)
     groups: Mapped[str] = mapped_column(String)
 
     consumptions: Mapped[List["Consumption"]
                          ] = relationship(back_populates="session")
+    reserves: Mapped[List["Reserve"]
+                     ] = relationship(back_populates="session")
 
     __table_args__ = (
         UniqueConstraint(
             'refeicao', 'periodo', 'data', 'hora', name="_all_uc",
-            sqlite_on_conflict="REPLACE"
+            sqlite_on_conflict="IGNORE"
         ),
     )
 

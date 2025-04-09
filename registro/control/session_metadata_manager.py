@@ -67,7 +67,8 @@ class SessionMetadataManager:
             try:
                 self._spread = SpreadSheet()
             except Exception as e:  # pylint: disable=broad-except
-                print(f"Error initializing SpreadSheet {type(e).__name__}: {e}")
+                print(
+                    f"Error initializing SpreadSheet {type(e).__name__}: {e}")
                 sys.exit(1)
         return self._spread
 
@@ -197,12 +198,29 @@ class SessionMetadataManager:
         data = session["data"]
         self._date = data
 
+        session_data = {
+            "refeicao": refeicao,
+            "periodo": session["período"],
+            "data": session["data"],
+            "hora": session["hora"],
+            "snack_name": session["lanche"] if refeicao == "lanche" else '',
+            "groups": json.dumps(session["groups"]),
+        }
+        session_ = self.session_crud.create(session_data)
+        self._session_id = session_.id
+
         reserves = self.session_crud.get_session().query(Reserve).filter(
-            Reserve.snacks == False, Reserve.data == data  # pylint: disable=singleton-comparison
+            Reserve.snacks == False, Reserve.data == data,  # pylint: disable=singleton-comparison
+            Reserve.session_id.is_(None)
         ).count()
         if refeicao == "almoço":
             if reserves == 0:
                 return False
+            self.session_crud.get_session().query(Reserve).filter(
+                Reserve.data == data,
+                Reserve.snacks == False,  # pylint: disable=singleton-comparison
+                Reserve.session_id.is_(None)
+            ).update({"session_id": session_.id})
         elif refeicao == "lanche":
             snacks_reserves_count = self.session_crud.get_session().query(Reserve).filter(
                 Reserve.snacks == True, Reserve.data == data  # pylint: disable=singleton-comparison
@@ -214,19 +232,10 @@ class SessionMetadataManager:
                 reserve_crud = CRUD[Reserve](
                     self.session_crud.get_session(), Reserve)
                 reserve_snacks(student_crud, reserve_crud,
-                               data, session['lanche'])
-
-        session_data = {
-            "refeicao": refeicao,
-            "periodo": session["período"],
-            "data": session["data"],
-            "hora": session["hora"],
-            "groups": json.dumps(session["groups"]),
-        }
-        session_ = self.session_crud.create(session_data)
-        self._session_id = session_.id
+                               data, session['lanche'], session_.id)
 
         self._update_session(session_)
+        self.session_crud.get_session().commit()
         self.save_session()
         return True
 
