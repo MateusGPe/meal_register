@@ -7,6 +7,7 @@ and for reserving snacks for all students.
 """
 
 import csv
+import sys
 from typing import Dict, List, Set, Tuple
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -173,7 +174,8 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
         bool: True if the snack reservation was successful for all students, False otherwise.
     """
     try:
-        students = student_crud.read_all()
+        students = student_crud.get_session().query(Student).join(Student.groups).filter(
+            Group.nome.ilike('%mec%') | Group.nome.ilike('%mac%')).all()
 
         reserves_to_insert: List[dict] = []
         for student in students:
@@ -267,7 +269,8 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
                 except (TypeError, ValueError) as e:
                     print(f"Error processing row: {row}. Error: {e}")
 
-            new_groups.difference_update(set(t.nome for t in turma_crud.read_all()))
+            new_groups.difference_update(
+                set(t.nome for t in turma_crud.read_all()))
 
             if new_groups:
                 turma_crud.bulk_create([{'nome': name} for name in new_groups])

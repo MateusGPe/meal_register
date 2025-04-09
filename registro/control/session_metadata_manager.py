@@ -206,31 +206,40 @@ class SessionMetadataManager:
             "snack_name": session["lanche"] if refeicao == "lanche" else '',
             "groups": json.dumps(session["groups"]),
         }
-        session_ = self.session_crud.create(session_data)
-        self._session_id = session_.id
 
         reserves = self.session_crud.get_session().query(Reserve).filter(
             Reserve.snacks == False, Reserve.data == data,  # pylint: disable=singleton-comparison
-            Reserve.session_id.is_(None)
-        ).count()
+            Reserve.session_id == None # pylint: disable=singleton-comparison
+        ).all()
+
         if refeicao == "almoço":
             if reserves == 0:
                 return False
+            session_ = self.session_crud.create(session_data)
+            self._session_id = session_.id
+
             self.session_crud.get_session().query(Reserve).filter(
                 Reserve.data == data,
                 Reserve.snacks == False,  # pylint: disable=singleton-comparison
-                Reserve.session_id.is_(None)
+                Reserve.session_id== None # pylint: disable=singleton-comparison
             ).update({"session_id": session_.id})
+            self.session_crud.commit()
         elif refeicao == "lanche":
-            snacks_reserves_count = self.session_crud.get_session().query(Reserve).filter(
-                Reserve.snacks == True, Reserve.data == data  # pylint: disable=singleton-comparison
+            snacks_reserves_count = self.session_crud.get_session(
+            ).query(Reserve).join(Reserve.session).filter(
+                Reserve.snacks == True,  # pylint: disable=singleton-comparison
+                Reserve.data == data,
+                Session.id.is_(None)
             ).count()
 
-            if snacks_reserves_count == 0:
+            session_ = self.session_crud.create(session_data)
+            self._session_id = session_.id
+            if not snacks_reserves_count:
                 student_crud = CRUD[Student](
                     self.session_crud.get_session(), Student)
                 reserve_crud = CRUD[Reserve](
                     self.session_crud.get_session(), Reserve)
+
                 reserve_snacks(student_crud, reserve_crud,
                                data, session['lanche'], session_.id)
 

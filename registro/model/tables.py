@@ -93,14 +93,13 @@ class Reserve(Base):
     student_id: Mapped[int] = mapped_column(
         ForeignKey("students.id", ondelete="RESTRICT"))
     session_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("session.id", ondelete="RESTRICT"))
+        ForeignKey("session.id", ondelete="RESTRICT"), nullable=True)
     dish: Mapped[Optional[str]] = mapped_column(String, nullable=False)
     data: Mapped[str] = mapped_column(String, nullable=False)
     snacks: Mapped[bool] = mapped_column(Boolean, default=False)
     canceled: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    session: Mapped["Session"] = relationship(back_populates="reserves")
-
+    session: Mapped[Optional["Session"]] = relationship(back_populates="reserves")
     student: Mapped["Student"] = relationship(back_populates="reserves")
     consumption: Mapped[Optional["Consumption"]] = relationship(back_populates="reserve",
                                                                 uselist=False)
