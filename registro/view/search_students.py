@@ -24,6 +24,8 @@ from registro.control.session_manage import SessionManager
 from registro.control.utils import to_code
 
 # pylint: disable=too-many-ancestors,too-many-instance-attributes
+
+
 class SearchStudents(ttk.Frame):
     """
     A frame for searching and registering students for meals.
@@ -60,12 +62,12 @@ class SearchStudents(ttk.Frame):
         self._entry.bind('<Return>', self.on_register)
         self._entry.grid(sticky="NEWS", column=0, row=0, padx=3, pady=2)
 
-        register_button = ttk.Button(search_bar, text='\u2795',
-                         bootstyle='success', command=self.on_register)
+        register_button = ttk.Button(search_bar, text='➕',
+                                     bootstyle='success', command=self.on_register)
         register_button.grid(sticky="NEWS", column=1, row=0, padx=3, pady=2)
 
         clear_button = ttk.Button(
-            search_bar, text='\u26d4', command=lambda: self._entry_var.set(''), bootstyle='danger')
+            search_bar, text='⛔', command=lambda: self._entry_var.set(''), bootstyle='danger')
         clear_button.grid(sticky="NEWS", column=2, row=0, padx=3, pady=2)
 
         self.last_register = ttk.Label(search_bar, text='...')
