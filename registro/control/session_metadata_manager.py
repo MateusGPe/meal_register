@@ -20,7 +20,7 @@ from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks
 from registro.control.sync_session import SpreadSheet
 from registro.control.utils import load_json, save_json
-from registro.model.tables import Base, Reserve, Session, Student
+from registro.model.tables import Base, Group, Reserve, Session, Student
 
 
 class SessionMetadataManager:
@@ -184,69 +184,164 @@ class SessionMetadataManager:
         self._turmas = classes
         return self._turmas
 
-    def new_session(self, session: Dict[str, Any]):
+    def new_session(self, session_info: Dict[str, Any]) -> bool:
         """
-        Creates a new meal serving session.
+        Creates a new meal serving session and handles related reserves.
 
         Args:
-            session (Dict[str, Any]): A dictionary containing the new session's information.
+            session_info (Dict[str, Any]): A dictionary containing the new session's information.
+                                           Expected keys: "refeição", "data", "período", "hora",
+                                                          "lanche" (if refeição is lanche), "groups".
 
         Returns:
             bool: True if the session was created successfully, False otherwise.
         """
-        refeicao = session["refeição"].lower()
-        data = session["data"]
-        self._date = data
+        db: Session = self.database_session  # Get session once
 
-        session_data = {
-            "refeicao": refeicao,
-            "periodo": session["período"],
-            "data": session["data"],
-            "hora": session["hora"],
-            "snack_name": session["lanche"] if refeicao == "lanche" else '',
-            "groups": json.dumps(session["groups"]),
-        }
+        try:
+            refeicao = session_info["refeição"].lower()
+            data = session_info["data"]
+            self._date = data  # Store date if needed by other methods
 
-        reserves = self.session_crud.get_session().query(Reserve).filter(
-            Reserve.snacks == False, Reserve.data == data,  # pylint: disable=singleton-comparison
-            Reserve.session_id == None # pylint: disable=singleton-comparison
-        ).all()
+            session_data = {
+                "refeicao": refeicao,
+                "periodo": session_info["período"],
+                "data": data,
+                "hora": session_info["hora"],
+                # Use .get for safety
+                "snack_name": session_info.get("lanche", '') if refeicao == "lanche" else '',
+                "groups": json.dumps(session_info["groups"]),
+            }
 
-        if refeicao == "almoço":
-            if reserves == 0:
+            # Create the base session object first (but don't commit yet)
+            # Assuming session_crud.create adds to the session but doesn't commit
+            session_ = self.session_crud.create(
+                session_data, commit=False)  # Pass commit=False if possible
+            if not session_:
+                # Handle case where session creation itself failed before commit
+                print("Error: Failed to create session object in memory.")
+                # db.rollback() # No need to rollback if nothing was flushed yet
                 return False
-            session_ = self.session_crud.create(session_data)
-            self._session_id = session_.id
 
-            self.session_crud.get_session().query(Reserve).filter(
-                Reserve.data == data,
-                Reserve.snacks == False,  # pylint: disable=singleton-comparison
-                Reserve.session_id== None # pylint: disable=singleton-comparison
-            ).update({"session_id": session_.id})
-            self.session_crud.commit()
-        elif refeicao == "lanche":
-            snacks_reserves_count = self.session_crud.get_session(
-            ).query(Reserve).join(Reserve.session).filter(
-                Reserve.snacks == True,  # pylint: disable=singleton-comparison
-                Reserve.data == data,
-                Session.id.is_(None)
-            ).count()
+            self._session_id = session_.id  # Store session ID if needed
 
-            session_ = self.session_crud.create(session_data)
-            self._session_id = session_.id
-            if not snacks_reserves_count:
-                student_crud = CRUD[Student](
-                    self.session_crud.get_session(), Student)
-                reserve_crud = CRUD[Reserve](
-                    self.session_crud.get_session(), Reserve)
+            if refeicao == "almoço":
+                # Filter for existing *lunch* reserves for this date without a session
+                lunch_reserve_filter = (
+                    Reserve.snacks.is_(False),
+                    Reserve.data == data,
+                    Reserve.session_id.is_(None)
+                )
 
-                reserve_snacks(student_crud, reserve_crud,
-                               data, session['lanche'], session_.id)
+                # Check if there are any reserves to assign
+                reserves_to_update = db.query(Reserve).filter(
+                    *lunch_reserve_filter).all()
 
-        self._update_session(session_)
-        self.session_crud.get_session().commit()
-        self.save_session()
-        return True
+                if not reserves_to_update:
+                    print(
+                        f"Warning: No unassigned lunch reserves found for date {data}. Session created but no reserves linked.")
+                    # Decide if this is an error or just a warning.
+                    # If it's an error and session shouldn't be created:
+                    # db.rollback() # Rollback session creation
+                    # return False
+                    # If it's okay to have a session without reserves: proceed.
+
+                # Update existing lunch reserves to link them to this new session
+                db.query(Reserve).filter(*lunch_reserve_filter).update(
+                    {"session_id": session_.id},
+                    synchronize_session=False  # Important for bulk updates
+                )
+                print(f"Updated {len(reserves_to_update)} lunch reserves.")
+
+            elif refeicao == "lanche":
+                # Filter for existing *snack* reserves for this date without a session
+                snack_reserve_filter = (
+                    Reserve.snacks.is_(True),
+                    Reserve.data == data,
+                    Reserve.session_id.is_(None)
+                )
+
+                # Check if unassigned snack reserves already exist
+                existing_snack_reserves_count = db.query(
+                    Reserve).filter(*snack_reserve_filter).count()
+
+                if existing_snack_reserves_count > 0:
+                    # If reserves exist, just link them (optional, depending on requirements)
+                    # If you want to link *existing* unassigned snack reserves:
+                    db.query(Reserve).filter(*snack_reserve_filter).update(
+                        {"session_id": session_.id},
+                        synchronize_session=False
+                    )
+                    print(
+                        f"Updated {existing_snack_reserves_count} existing snack reserves.")
+                    # If you *don't* want to link existing ones automatically, remove the update above.
+
+                else:
+                    # No existing unassigned snack reserves found, create new ones for students in groups
+                    # Instantiate CRUD helpers here if needed
+                    reserve_crud = CRUD[Reserve](db, Reserve)
+
+                    # Ensure it's a set for efficient lookup
+                    target_groups = set(session_info["groups"])
+                    if not target_groups:
+                        print(
+                            f"Warning: No groups specified for snack session {session_.id}. No reserves created.")
+                    else:
+                        # Find students in the specified groups
+                        students_in_groups = (
+                            db.query(Student)
+                            # Assumes relationship named 'groups'
+                            .join(Student.groups)
+                            # Assumes Group model has 'nome'
+                            .filter(Group.nome.in_(target_groups))
+                            .all()
+                        )
+
+                        print(
+                            f"Found {len(students_in_groups)} students in groups {target_groups} for snack session.")
+
+                        if students_in_groups:
+                            reserves_to_insert: List[Dict[str, Any]] = []
+                            # Get snack name
+                            snack_name = session_data["snack_name"]
+                            for student in students_in_groups:
+                                reserves_to_insert.append({
+                                    'dish': snack_name,  # Use the actual snack name
+                                    'data': data,
+                                    'snacks': True,
+                                    'canceled': False,
+                                    'student_id': student.id,
+                                    'session_id': session_.id  # Link to the new session
+                                })
+
+                            # Use bulk insert for efficiency
+                            # Assuming reserve_crud.bulk_create uses session.bulk_insert_mappings or similar
+                            reserve_crud.bulk_create(
+                                reserves_to_insert, commit=False)  # Pass commit=False
+                            print(
+                                f"Bulk created {len(reserves_to_insert)} new snack reserves.")
+                        else:
+                            print(
+                                f"Warning: No students found in the specified groups {target_groups}. No reserves created.")
+
+            # --- Commit Transaction ---
+            # All operations succeeded up to this point, now commit everything.
+            db.commit()
+            print(
+                f"Session {session_.id} ({refeicao}) and related reserves committed successfully.")
+
+            # --- Post-Commit Actions ---
+            # These should ideally happen *after* the transaction is successful
+            self._update_session(session_)  # Update internal state if needed
+            self.save_session()  # Save other state if needed
+
+            return True
+
+        except Exception as e:
+            print(f"Error creating session: {e}")
+            if db:  # Check if db session was obtained
+                db.rollback()  # Roll back any changes if an error occurred
+            return False
 
     def get_session_info(self) -> Tuple[int, str, str, List[str]]:
         """

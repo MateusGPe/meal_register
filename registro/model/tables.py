@@ -106,7 +106,7 @@ class Reserve(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "student_id", "data", "snacks", name="_pront_uc", sqlite_on_conflict="IGNORE"
+            "student_id", "data", "snacks", name="_pront_uc", sqlite_on_conflict="ABORT"
         ),
     )
 
@@ -140,7 +140,7 @@ class Session(Base):
     __table_args__ = (
         UniqueConstraint(
             'refeicao', 'periodo', 'data', 'hora', name="_all_uc",
-            sqlite_on_conflict="IGNORE"
+            sqlite_on_conflict="ABORT"
         ),
     )
 

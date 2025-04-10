@@ -7,7 +7,6 @@ and for reserving snacks for all students.
 """
 
 import csv
-import sys
 from typing import Dict, List, Set, Tuple
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -157,7 +156,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 
 
 def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
-                   data: str, dish: str, session_id: int) -> bool:
+                   data: str, dish: str, session_id: int, groups: Set[str]) -> bool:
     """
     Reserves a specific snack for all students on a given date.
 
@@ -174,11 +173,15 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
         bool: True if the snack reservation was successful for all students, False otherwise.
     """
     try:
-        students = student_crud.get_session().query(Student).join(Student.groups).filter(
-            Group.nome.ilike('%mec%') | Group.nome.ilike('%mac%')).all()
+        results = student_crud.get_session(
+        ).query(Student
+        ).join(Student.groups).filter(
+            Group.nome.in_(set(groups))
+        ).all()
+        print(results, session_id, data, dish)
 
         reserves_to_insert: List[dict] = []
-        for student in students:
+        for student in results:
             reserves_to_insert.append({
                 'dish': dish,
                 'data': data,

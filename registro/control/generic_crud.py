@@ -45,7 +45,7 @@ class CRUD(Generic[MODEL]):
         _primary_key_name = model.__mapper__.primary_key[0].name
         self._primary_key_column = getattr(self._model, _primary_key_name)
 
-    def create(self: Self, data: Dict) -> Optional[MODEL]:
+    def create(self: Self, data: Dict, commit: bool = True) -> Optional[MODEL]:
         """
         Creates a new record in the database.
 
@@ -58,8 +58,9 @@ class CRUD(Generic[MODEL]):
         try:
             db_item = self._model(**data)
             self._db_session.add(db_item)
-            self._db_session.commit()
-            self._db_session.refresh(db_item)
+            if commit:
+                self._db_session.commit()
+                self._db_session.refresh(db_item)
             return db_item
         except DBAPIError as e:
             self._db_session.rollback()
@@ -224,7 +225,7 @@ class CRUD(Generic[MODEL]):
             logger.error("Error deleting record with ID %s: %s", item_id, e)
             return False
 
-    def bulk_create(self: Self, rows: List[Dict]) -> bool:
+    def bulk_create(self: Self, rows: List[Dict], commit: bool = True) -> bool:
         """
         Creates multiple new records in the database in a single operation.
 
@@ -238,7 +239,8 @@ class CRUD(Generic[MODEL]):
         try:
             if rows:
                 self._db_session.execute(insert(self._model), rows)
-                self._db_session.commit()
+                if commit:
+                    self._db_session.commit()
 
             return True
         except DBAPIError as e:
