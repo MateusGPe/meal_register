@@ -198,6 +198,7 @@ class SpreadSheet:
             print(f"Error appending unique rows to sheet '{sheet_name}': {e}")
             return False
         except Exception as e:  # pylint: disable=broad-except
-            print(f"An unexpected error occurred while appending unique rows to sheet '{
-                sheet_name}'- {type(e).__name__}: {e}")
+            print(
+                "An unexpected error occurred while appending unique rows to sheet "
+                f"'{sheet_name}'- {type(e).__name__}: {e}")
             return False
