@@ -13,6 +13,7 @@ from typing import List, Set, Tuple, Optional
 import gspread
 from google.oauth2.credentials import Credentials
 from gspread.exceptions import APIError, WorksheetNotFound, SpreadsheetNotFound
+from gspread.utils import ValueInputOption
 
 from registro.control.constants import SPREADSHEET_ID_JSON
 from registro.control.google_creds import GrantAccess
@@ -20,7 +21,7 @@ from registro.control.google_creds import GrantAccess
 logger = logging.getLogger(__name__)
 
 
-def _convert_to_tuples(list_of_lists: list) -> Set[Tuple[str, ...]]:
+def _convert_to_tuples(list_of_lists: List[List[str]]) -> Set[Tuple[str, ...]]:
     """Converts a list of lists into a set of tuples.
 
     Args:
@@ -54,7 +55,7 @@ class SpreadSheet:
     spreadsheet: gspread.Spreadsheet
     credentials: Credentials
     client: gspread.Client
-    configuration: dict
+    configuration: dict[str, str]
 
     def __init__(self, config_file: str = SPREADSHEET_ID_JSON):
         """
@@ -116,11 +117,13 @@ class SpreadSheet:
             worksheet = self.spreadsheet.worksheet(sheet_name)
             if replace:
                 worksheet.clear()
-                worksheet.update('A1', rows, value_input_option='USER_ENTERED')
+                worksheet.update(range_name='A1', values=rows,
+                                 value_input_option=ValueInputOption.user_entered)
                 logger.info(
                     "Sheet '%s' data replaced successfully.", sheet_name)
             else:
-                worksheet.append_rows(rows, value_input_option='USER_ENTERED')
+                worksheet.append_rows(
+                    values=rows, value_input_option=ValueInputOption.user_entered)
                 logger.info(
                     "Rows appended to sheet '%s' successfully.", sheet_name)
             return True
@@ -156,8 +159,8 @@ class SpreadSheet:
             print(f"Error getting values from sheet '{sheet_name}': {e}")
             return None
         except Exception as e:  # pylint: disable=broad-except
-            print(f"An unexpected error occurred while getting values from sheet  '{
-                sheet_name}'- {type(e).__name__}: {e}")
+            print("An unexpected error occurred while getting values from sheet  "
+                  f"'{sheet_name}'- {type(e).__name__}: {e}")
             return None
 
     def append_unique_rows(self, rows: List[List[str]], sheet_name: str) -> bool:
@@ -184,7 +187,7 @@ class SpreadSheet:
 
             if unique_rows:
                 worksheet.append_rows(
-                    unique_rows, value_input_option='USER_ENTERED')
+                    values=unique_rows, value_input_option=ValueInputOption.user_entered)
                 print(
                     f"{len(unique_rows)} unique rows appended to sheet '{sheet_name}'.")
             else:
