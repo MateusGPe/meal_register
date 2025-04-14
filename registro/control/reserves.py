@@ -156,7 +156,7 @@ def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve]
 
 
 def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
-                   data: str, dish: str) -> bool:
+                   data: str, dish: str, session_id: int, groups: Set[str]) -> bool:
     """
     Reserves a specific snack for all students on a given date.
 
@@ -173,16 +173,22 @@ def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
         bool: True if the snack reservation was successful for all students, False otherwise.
     """
     try:
-        students = student_crud.read_all()
+        results = student_crud.get_session(
+        ).query(Student
+        ).join(Student.groups).filter(
+            Group.nome.in_(set(groups))
+        ).all()
+        print(results, session_id, data, dish)
 
         reserves_to_insert: List[dict] = []
-        for student in students:
+        for student in results:
             reserves_to_insert.append({
                 'dish': dish,
                 'data': data,
                 'snacks': True,
                 'canceled': False,
-                'student_id': student.id
+                'student_id': student.id,
+                'session_id': session_id
             })
 
         reserve_crud.bulk_create(reserves_to_insert)
@@ -266,7 +272,8 @@ def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
                 except (TypeError, ValueError) as e:
                     print(f"Error processing row: {row}. Error: {e}")
 
-            new_groups.difference_update(set(t.nome for t in turma_crud.read_all()))
+            new_groups.difference_update(
+                set(t.nome for t in turma_crud.read_all()))
 
             if new_groups:
                 turma_crud.bulk_create([{'nome': name} for name in new_groups])
