@@ -114,6 +114,7 @@ class MealSessionHandler:
 
         # Add students without reservations if 'SEM RESERVA' is selected
         if self._unreserved_turmas:
+            print(self._unreserved_turmas)
             self._add_students_without_reservations(
                 filtered_students, reserved_pronts, self._unreserved_turmas)
 
@@ -197,7 +198,7 @@ class MealSessionHandler:
             Student.nome,
             Group.nome,
             Student.id.label('student_id'),
-        ).join(Reserve, Reserve.student_id == Student.id).join(Student.groups).filter(
+        ).join(Student.groups).filter(
             Group.nome.in_(selected_turmas),
             Student.pront.not_in(list(reserved_pronts))
         ).all()
