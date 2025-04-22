@@ -1,295 +1,369 @@
+# ----------------------------------------------------------------------------
+# File: registro/control/reserves.py (Refined Reserves Importer)
+# ----------------------------------------------------------------------------
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
 
 """
-Provides functions for importing student and reserve data from CSV files
-and for reserving snacks for all students.
+Fornece funções para importar dados de alunos e reservas de arquivos CSV
+e para reservar lanches para todos os alunos.
 """
 
 import csv
-from typing import Dict, List, Set, Tuple
+import logging
+from typing import Dict, List, Set, Tuple, Optional, Any
 
-from sqlalchemy.exc import SQLAlchemyError
-
+# Importações SQLAlchemy e locais
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from registro.control.generic_crud import CRUD
-from registro.control.utils import adjust_keys
+from registro.control.utils import adjust_keys, load_csv_as_dict
 from registro.model.tables import Group, Reserve, Student
 
+logger = logging.getLogger(__name__)
 
-def _process_reserves(csv_reserves_data: Dict[str, str],
-                      all_students_by_pront: Dict[str, Student]) -> Dict[str, str]:
-    """
-    Processes reserve data from a CSV file and prepares it for insertion.
-
-    Args:
-        csv_reserves_data (Dict[str, str]): Reserve data extracted from the CSV file.
-        all_students_by_pront (Dict[str, Student]): Mapping of student 'pront' to Student objects.
-
-    Returns:
-        Dict[str, str]: A list of dictionaries representing reserves to be inserted.
-    """
-    reserves_to_insert: List[dict] = []
-    for reserve_info in csv_reserves_data:
-        pront = reserve_info['pront']
-        if pront in all_students_by_pront:
-            reserves_to_insert.append({
-                'dish': reserve_info.get('dish'),
-                'data': reserve_info['data'],
-                'snacks': False,
-                'canceled': reserve_info['canceled'],
-                'student_id': all_students_by_pront[pront].id})
-        else:
-            print(f"Warning: Student with pront '{pront}' not found"
-                  " in the database for a reserve entry.")
-    return reserves_to_insert
-
-
-def _process_reserve_row(
-        row: Dict[str, str],
-        new_students_data: Dict[str, Dict[str, str]],
-        csv_reserves_data: List[Dict[str, str]],
-        existing_students_pronts: Set[str]):
-    """
-    Processes a single row of reserve data from the CSV file.
-
-    Args:
-        row (Dict[str, str]): A single row of data from the CSV file.
-        new_students_data (Dict[str, Dict[str, str]]): Dictionary to store new student data.
-        csv_reserves_data (List[Dict[str, str]]): List to store reserve data from the CSV.
-        existing_students_pronts (Set[str]): Set of existing student 'pront' values.
-
-    Raises:
-        KeyError: If a required key is missing in the row.
-        csv.Error: If there is an error parsing the CSV file.
-        SQLAlchemyError: If there is a database error.
-    """
-    try:
-        row = adjust_keys(row)
-        pront = row['pront']
-        nome = row['nome']
-
-        if not pront or not nome:
-            return
-
-        turma = row['turma']
-        dish = row['dish']
-        data = row['data']
-
-        if pront not in new_students_data and pront not in existing_students_pronts:
-            new_students_data[pront] = {
-                'pront': pront, 'nome': nome, 'turma': turma}
-
-        csv_reserves_data.append({
-            'pront': pront, 'dish': dish, 'data': data, 'snacks': False,
-            'canceled': False})
-    except KeyError as e:
-        print(f"Missing key in row: {row}. Error: {e}")
-    except csv.Error as e:
-        print(f"Error parsing CSV: {e}")
-    except SQLAlchemyError as e:
-        print(f"Database error (_process_reserve_row): {e}")
-
-
-def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
-                        csv_file_path: str) -> bool:
-    """
-    Imports reserve data from a CSV file into the database.
-
-    This function reads student and reserve information from a CSV file,
-    creates new student records if they don't exist, and creates corresponding
-    reserve entries. If a student does not have a reservation on a given date,
-    a "Sem Reserva" entry is created.
-
-    Args:
-        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
-        reserve_crud (CRUD[Reserve]): CRUD object for interacting with the Reserve table.
-        csv_file_path (str): The path to the CSV file containing the reserve data.
-
-    Returns:
-        bool: True if the import was successful, False otherwise.
-    """
-    try:
-        existing_students_pronts: Set[str] = {
-            s.pront for s in student_crud.read_all()
-        }
-        new_students_data: Dict[str, Dict[str, str]] = {}
-        csv_reserves_data: List[Dict[str, str]] = []
-
-        with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                _process_reserve_row(
-                    row, new_students_data,
-                    csv_reserves_data,
-                    existing_students_pronts)
-
-        if new_students_data:
-            student_crud.bulk_create(list(new_students_data.values()))
-
-        all_students_by_pront: Dict[str, Student] = {
-            student.pront: student for student in student_crud.read_all()
-        }
-
-        reserves_to_insert: List[dict] = _process_reserves(
-            csv_reserves_data, all_students_by_pront)
-
-        if reserves_to_insert:
-            reserve_crud.bulk_create(reserves_to_insert)
-            reserve_crud.commit()
-
-        print(f"Successfully imported data from {csv_file_path}")
-        return True
-
-    except FileNotFoundError:
-        print(f"File not found: {csv_file_path}")
-        return False
-    except csv.Error as e:
-        print(f"Error parsing CSV: {e}")
-        return False
-    except SQLAlchemyError as e:
-        student_crud.rollback()
-        print(f"Database error (import_reserves_csv): {e}")
-        return False
-    except (TypeError, ValueError) as e:
-        print(f"Invalid data: {e}")
-        return False
-
-
-def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
-                   data: str, dish: str) -> bool:
-    """
-    Reserves a specific snack for all students on a given date.
-
-    This function creates a reserve entry for each student in the database
-    for the specified snack and date.
-
-    Args:
-        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
-        reserve_crud (CRUD[Reserve]): CRUD object for interacting with the Reserve table.
-        data (str): The date for which to reserve the snack (in 'YYYY-MM-DD' format).
-        dish (str): The name of the snack to reserve.
-
-    Returns:
-        bool: True if the snack reservation was successful for all students, False otherwise.
-    """
-    try:
-        students = student_crud.read_all()
-
-        reserves_to_insert: List[dict] = []
-        for student in students:
-            reserves_to_insert.append({
-                'dish': dish,
-                'data': data,
-                'snacks': True,
-                'canceled': False,
-                'student_id': student.id
-            })
-
-        reserve_crud.bulk_create(reserves_to_insert)
-        reserve_crud.commit()
-
-        return True
-
-    except SQLAlchemyError as e:
-        reserve_crud.rollback()
-        print(f"Database error (reserve_snacks): {e}")
-        return False
-    except (TypeError, ValueError) as e:
-        print(f"Invalid data: {e}")
-        return False
-
-
-def _associate_students_with_groups(student_crud: CRUD[Student], turma_crud: CRUD[Group],
-                                    students_groups: List[Tuple[str, str]]):
-    all_groups: Dict[str, Group] = {t.nome: t for t in turma_crud.read_all()}
-    all_students: Dict[str, Student] = {
-        s.pront: s for s in student_crud.read_all()
-    }
-    for pront, group_name in students_groups:
-        if pront in all_students and group_name in all_groups:
-            student = all_students[pront]
-            group = all_groups[group_name]
-            if group not in student.groups:
-                student.groups.append(group)
-    student_crud.commit()
+# --- Funções de Importação CSV ---
 
 
 def import_students_csv(student_crud: CRUD[Student], turma_crud: CRUD[Group],
                         csv_file_path: str) -> bool:
     """
-    Imports student data from a CSV file into the database, including group (turma) information.
+    Importa dados de alunos de um CSV para o DB, incluindo turmas e associações.
 
-    This function reads student information (pront, nome, turma) from a CSV
-    file, creates new student and group records in the database if they don't
-    already exist, and establishes the relationship between them.
+    Lê pront, nome, turma. Cria Student e Group se não existirem.
+    Associa Students a Groups. Usa bulk operations para eficiência.
 
     Args:
-        student_crud (CRUD[Student]): CRUD object for interacting with the Students table.
-        turma_crud (CRUD[Group]): CRUD object for interacting with the Groups (Turmas) table.
-        csv_file_path (str): The path to the CSV file containing the student data.
+        student_crud (CRUD[Student]): CRUD para Alunos.
+        turma_crud (CRUD[Group]): CRUD para Turmas (Grupos).
+        csv_file_path (str): Caminho do arquivo CSV dos alunos.
 
     Returns:
-        bool: True if the import was successful, False otherwise.
+        bool: True se sucesso, False se erro.
+    """
+    logger.info(f"Iniciando importação de alunos do CSV: {csv_file_path}")
+    try:
+        # Carrega dados brutos do CSV
+        raw_student_data = load_csv_as_dict(csv_file_path)
+        if raw_student_data is None:
+            return False  # Erro na leitura já logado
+        if not raw_student_data:
+            logger.info("CSV de alunos vazio.")
+            return True
+
+        # --- Prepara dados para processamento ---
+        existing_students_pronts = {s.pront for s in student_crud.read_all()}
+        existing_groups_names = {g.nome for g in turma_crud.read_all()}
+
+        students_to_create: List[Dict[str, Any]] = []
+        groups_to_create: Set[str] = set()
+        # (pront, group_name)
+        student_group_associations: Set[Tuple[str, str]] = set()
+
+        # --- Processa cada linha do CSV ---
+        for i, row_raw in enumerate(raw_student_data):
+            try:
+                # Normaliza chaves e valores básicos
+                row = adjust_keys(row_raw)  # Usa utils.adjust_keys
+                pront = row.get('pront')
+                nome = row.get('nome')
+                group_name = row.get('turma')  # Chave 'turma' após adjust_keys
+
+                # Valida dados essenciais da linha
+                if not pront or not nome:
+                    logger.warning(
+                        f"Linha {i+2} CSV alunos ignorada: pront ou nome ausente. Linha: {row_raw}")
+                    continue
+
+                # Verifica se o aluno precisa ser criado
+                if pront not in existing_students_pronts and pront not in {s['pront'] for s in students_to_create}:
+                    # Prepara dados do aluno (remove 'turma' se existir, será associada depois)
+                    # Apenas campos do Student
+                    student_data = {k: v for k, v in row.items() if k in [
+                        'pront', 'nome']}
+                    students_to_create.append(student_data)
+
+                # Verifica se a turma precisa ser criada e prepara associação
+                if group_name:
+                    student_group_associations.add((pront, group_name))
+                    if group_name not in existing_groups_names:
+                        # Adiciona ao set para criar depois
+                        groups_to_create.add(group_name)
+
+            except Exception as row_err:
+                logger.error(
+                    f"Erro processando linha {i+2} CSV alunos: {row_err}. Linha: {row_raw}", exc_info=True)
+                # Decide se continua ou aborta (aqui continua)
+
+        # --- Executa operações no DB ---
+        try:
+            # Cria novas turmas (se houver)
+            if groups_to_create:
+                logger.info(f"Criando {len(groups_to_create)} novas turmas...")
+                if not turma_crud.bulk_create([{'nome': name} for name in groups_to_create]):
+                    # Força rollback
+                    raise RuntimeError("Falha ao criar novas turmas em massa.")
+                logger.info("Novas turmas criadas.")
+                # Atualiza lista de turmas existentes para associação
+                existing_groups_names.update(groups_to_create)
+
+            # Cria novos alunos (se houver)
+            if students_to_create:
+                logger.info(
+                    f"Criando {len(students_to_create)} novos alunos...")
+                if not student_crud.bulk_create(students_to_create):
+                    # Força rollback
+                    raise RuntimeError("Falha ao criar novos alunos em massa.")
+                logger.info("Novos alunos criados.")
+                # Atualiza lista de alunos existentes para associação
+                existing_students_pronts.update(
+                    s['pront'] for s in students_to_create)
+
+            # Associa alunos a turmas (se houver associações)
+            if student_group_associations:
+                logger.info(
+                    f"Associando {len(student_group_associations)} alunos a turmas...")
+                if not _associate_students_with_groups(student_crud, turma_crud, student_group_associations,
+                                                       existing_students_pronts, existing_groups_names):
+                    # Força rollback
+                    raise RuntimeError("Falha ao associar alunos a turmas.")
+                logger.info("Associações aluno-turma concluídas.")
+
+            logger.info(
+                f"Importação de alunos do CSV '{csv_file_path}' concluída com sucesso.")
+            return True
+
+        except (SQLAlchemyError, RuntimeError) as db_err:
+            logger.error(
+                f"Erro de banco de dados durante importação de alunos: {db_err}", exc_info=True)
+            student_crud.rollback()  # Garante rollback em caso de erro na fase de DB
+            return False
+
+    except Exception as e:  # Captura erros gerais (leitura CSV, etc.)
+        logger.exception(
+            f"Erro inesperado durante importação de alunos do CSV '{csv_file_path}': {e}")
+        return False
+
+
+def _associate_students_with_groups(student_crud: CRUD[Student], turma_crud: CRUD[Group],
+                                    associations: Set[Tuple[str, str]],
+                                    all_pronts: Set[str], all_group_names: Set[str]) -> bool:
+    """
+    Associa Students a Groups existentes baseado em um conjunto de tuplas (pront, group_name).
+    Busca os objetos Student e Group no DB e atualiza a relação `student.groups`.
+
+    Args:
+        student_crud: CRUD para Alunos.
+        turma_crud: CRUD para Turmas.
+        associations: Conjunto de tuplas (pront, group_name) a associar.
+        all_pronts: Conjunto de todos os pronts existentes (otimização).
+        all_group_names: Conjunto de todos os nomes de grupos existentes (otimização).
+
+    Returns:
+        bool: True se sucesso, False se erro.
     """
     try:
-        new_students: Dict[str, Dict[str, str]] = {}
-        new_groups: Set[str] = set()
-        students_groups: Set[Tuple[str, str]] = set()
-        existing_students_pronts: Dict[str, Student] = {
-            s.pront: s for s in student_crud.read_all()
+        # Busca todos os alunos e grupos relevantes de uma vez para evitar N+1 queries
+        pronts_in_associations = {pront for pront, _ in associations}
+        groups_in_associations = {gname for _, gname in associations}
+
+        students_map: Dict[str, Student] = {
+            # Adapte se read_filtered não suportar __in
+            s.pront: s for s in student_crud.read_filtered(pront__in=list(pronts_in_associations))
+            # Alternativa: ler todos e filtrar: s for s in student_crud.read_all() if s.pront in pronts_in_associations
+        }
+        groups_map: Dict[str, Group] = {
+            # Adapte se read_filtered não suportar __in
+            g.nome: g for g in turma_crud.read_filtered(nome__in=list(groups_in_associations))
+            # Alternativa: g for g in turma_crud.read_all() if g.nome in groups_in_associations
         }
 
-        with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                try:
-                    row = adjust_keys(row)
+        association_count = 0
+        # Itera sobre as associações desejadas
+        for pront, group_name in associations:
+            student = students_map.get(pront)
+            group = groups_map.get(group_name)
 
-                    pront = row['pront']
+            if student and group:
+                # Verifica se a associação já existe para evitar duplicatas na lista (SQLAlchemy pode lidar com isso, mas é mais explícito)
+                if group not in student.groups:
+                    student.groups.append(group)
+                    logger.debug(f"Associando {pront} ao grupo '{group_name}'")
+                    association_count += 1
+                # else: logger.debug(f"Associação {pront} - '{group_name}' já existe.")
+            elif not student:
+                logger.warning(
+                    f"Não foi possível associar: Aluno com pront {pront} não encontrado no DB.")
+            elif not group:
+                logger.warning(
+                    f"Não foi possível associar: Grupo com nome '{group_name}' não encontrado no DB.")
 
-                    if not pront or not row['nome']:
-                        continue
-
-                    group_name = row['turma']
-
-                    if (pront not in new_students and
-                            pront not in existing_students_pronts):
-                        row.pop('turma')
-                        new_students[pront] = row
-
-                    if group_name:
-                        students_groups.add((pront, group_name))
-                        new_groups.add(group_name)
-
-                except KeyError as e:
-                    print(f"Missing key in row: {row}. Error: {e}")
-                except (TypeError, ValueError) as e:
-                    print(f"Error processing row: {row}. Error: {e}")
-
-            new_groups.difference_update(set(t.nome for t in turma_crud.read_all()))
-
-            if new_groups:
-                turma_crud.bulk_create([{'nome': name} for name in new_groups])
-
-            if new_students:
-                student_crud.bulk_create(list(new_students.values()))
-
-            _associate_students_with_groups(
-                student_crud, turma_crud, students_groups)
-
-            print(f"Successfully imported data from {csv_file_path}")
+        if association_count > 0:
+            student_crud.commit()  # Comita todas as associações adicionadas
+            logger.info(
+                f"{association_count} novas associações aluno-grupo salvas.")
+        else:
+            logger.info("Nenhuma nova associação aluno-grupo a ser salva.")
         return True
 
-    except FileNotFoundError:
-        print(f"File not found: {csv_file_path}")
-        return False
-    except csv.Error as e:
-        print(f"Error parsing CSV: {e}")
-        return False
     except SQLAlchemyError as e:
-        student_crud.get_session().rollback()
-        print(f"Database error (import_students_csv): {e}")
+        logger.error(
+            f"Erro de DB ao associar alunos a grupos: {e}", exc_info=True)
+        student_crud.rollback()
         return False
-    except (TypeError, ValueError) as e:
-        print(f"Invalid data: {e}")
+    except Exception as e:  # Captura outros erros
+        logger.exception(f"Erro inesperado ao associar alunos a grupos: {e}")
+        student_crud.rollback()
+        return False
+
+
+def import_reserves_csv(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
+                        csv_file_path: str) -> bool:
+    """
+    Importa dados de reservas de um CSV para o banco de dados.
+
+    Lê pront, nome, turma, dish, data do CSV. Associa a reserva ao Student
+    correspondente (ignora reservas de alunos não encontrados).
+    Usa bulk create para eficiência.
+
+    Args:
+        student_crud (CRUD[Student]): CRUD para Alunos.
+        reserve_crud (CRUD[Reserve]): CRUD para Reservas.
+        csv_file_path (str): Caminho do arquivo CSV das reservas.
+
+    Returns:
+        bool: True se sucesso, False se erro.
+    """
+    logger.info(f"Iniciando importação de reservas do CSV: {csv_file_path}")
+    try:
+        # Carrega dados brutos do CSV
+        raw_reserve_data = load_csv_as_dict(csv_file_path)
+        if raw_reserve_data is None:
+            return False  # Erro na leitura já logado
+        if not raw_reserve_data:
+            logger.info("CSV de reservas vazio.")
+            return True
+
+        # --- Prepara dados para processamento ---
+        # Busca todos os alunos de uma vez para mapeamento rápido pront -> id
+        all_students_map: Dict[str, int] = {
+            s.pront: s.id for s in student_crud.read_all()}
+        if not all_students_map:
+            logger.error(
+                "Nenhum aluno encontrado no banco de dados. Impossível importar reservas.")
+            return False
+
+        reserves_to_insert: List[Dict[str, Any]] = []
+
+        # --- Processa cada linha do CSV ---
+        for i, row_raw in enumerate(raw_reserve_data):
+            try:
+                row = adjust_keys(row_raw)  # Normaliza chaves
+                pront = row.get('pront')
+                data = row.get('data')
+                dish = row.get('dish')  # Pode ser None/vazio
+                # Ignora 'turma' e 'nome' aqui, foca na reserva
+                # Define 'snacks' como False (importação padrão é almoço/jantar?)
+                # Define 'canceled' como False (assume que CSV são reservas válidas)
+                # Ajuste essas lógicas se o CSV tiver essas informações
+
+                # Valida dados essenciais
+                if not pront or not data:
+                    logger.warning(
+                        f"Linha {i+2} CSV reservas ignorada: pront ou data ausente. Linha: {row_raw}")
+                    continue
+
+                # Verifica se o aluno da reserva existe no DB
+                student_id = all_students_map.get(pront)
+                if student_id:
+                    reserve_data = {
+                        'student_id': student_id,
+                        'data': data,
+                        'dish': dish or 'Não especificado',  # Valor padrão se vazio
+                        'snacks': False,  # Assumido como não-lanche
+                        # Pega do CSV se existir, senão False
+                        'canceled': row.get('canceled', False)
+                    }
+                    reserves_to_insert.append(reserve_data)
+                else:
+                    logger.warning(
+                        f"Linha {i+2} CSV reservas ignorada: Aluno pront '{pront}' não encontrado no DB.")
+
+            except Exception as row_err:
+                logger.error(
+                    f"Erro processando linha {i+2} CSV reservas: {row_err}. Linha: {row_raw}", exc_info=True)
+
+        # --- Insere reservas no DB ---
+        if reserves_to_insert:
+            logger.info(
+                f"Tentando inserir {len(reserves_to_insert)} reservas processadas do CSV '{csv_file_path}'.")
+            # Usa bulk_create para inserir. A constraint Unique (_pront_uc) no modelo Reserve
+            # com `sqlite_on_conflict="IGNORE"` deve lidar com duplicatas no SQLite.
+            # Para outros DBs, pode ser necessário tratamento adicional ou `ON CONFLICT DO NOTHING`.
+            if reserve_crud.bulk_create(reserves_to_insert):
+                logger.info(
+                    f"Importação de reservas do CSV '{csv_file_path}' concluída com sucesso.")
+                return True
+            else:
+                logger.error(
+                    f"Falha no bulk_create durante importação de reservas do CSV '{csv_file_path}'.")
+                return False  # Erro já logado pelo bulk_create
+        else:
+            logger.info(
+                f"Nenhuma reserva válida para importar do CSV '{csv_file_path}'.")
+            return True  # Sucesso, mas nada a importar
+
+    except Exception as e:  # Captura erros gerais
+        logger.exception(
+            f"Erro inesperado durante importação de reservas do CSV '{csv_file_path}': {e}")
+        return False
+
+# --- Função para Reservar Lanches ---
+
+
+def reserve_snacks(student_crud: CRUD[Student], reserve_crud: CRUD[Reserve],
+                   data: str, dish: str) -> bool:
+    """
+    Cria reservas de lanche para *todos* os alunos existentes na data especificada.
+
+    Args:
+        student_crud (CRUD[Student]): CRUD para Alunos.
+        reserve_crud (CRUD[Reserve]): CRUD para Reservas.
+        data (str): Data da reserva ('YYYY-MM-DD').
+        dish (str): Nome/descrição do lanche.
+
+    Returns:
+        bool: True se sucesso, False se erro.
+    """
+    logger.info(
+        f"Iniciando reserva de lanche '{dish}' para data '{data}' para todos os alunos.")
+    try:
+        all_students = student_crud.read_all()
+        if not all_students:
+            logger.warning(
+                "Nenhum aluno encontrado no DB para reservar lanches.")
+            return True  # Sucesso, mas nada a fazer
+
+        reserves_to_insert = [{
+            'student_id': student.id,
+            'data': data,
+            'dish': dish,
+            'snacks': True,  # Marca como lanche
+            'canceled': False
+        } for student in all_students]
+
+        logger.info(
+            f"Preparando {len(reserves_to_insert)} reservas de lanche para inserção...")
+        # Usa bulk_create. Duplicatas serão ignoradas pela constraint `_pront_uc` no SQLite.
+        if reserve_crud.bulk_create(reserves_to_insert):
+            logger.info(
+                f"Reservas de lanche para '{data}' criadas/ignoradas com sucesso.")
+            return True
+        else:
+            logger.error(
+                f"Falha no bulk_create ao reservar lanches para '{data}'.")
+            return False  # Erro já logado
+
+    except Exception as e:  # Captura erros gerais
+        logger.exception(
+            f"Erro inesperado ao reservar lanches para '{data}': {e}")
         return False
