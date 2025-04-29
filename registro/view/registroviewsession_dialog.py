@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from registro.control.session_manage import SessionManager
 logger = logging.getLogger(__name__)
 
+
 def classes_section(master: tk.Widget, classes: List[str]
                     ) -> tuple[List[Tuple[str, tk.BooleanVar, ttk.Checkbutton]], ttk.Labelframe]:
     rb_group = ttk.Labelframe(master, text="🎟️ Turmas Participantes", padding=6)
@@ -45,6 +46,7 @@ def classes_section(master: tk.Widget, classes: List[str]
         check_btn.grid(column=i % num_cols, row=i // num_cols, sticky="news", padx=10, pady=5)
         chk_buttons_data.append((turma_nome, check_var, check_btn))
     return (chk_buttons_data, rb_group)
+
 
 class SessionDialog(tk.Toplevel):
     def __init__(self, title: str, callback: Callable, parent_app: 'RegistrationApp'):
@@ -75,6 +77,7 @@ class SessionDialog(tk.Toplevel):
         self._center_window()
         self.resizable(False, True)
         self.deiconify()
+
     def _center_window(self):
         self.update_idletasks()
         parent = self.__parent_app
@@ -84,6 +87,7 @@ class SessionDialog(tk.Toplevel):
         pos_x = parent_x + (parent_w // 2) - (dialog_w // 2)
         pos_y = parent_y + (parent_h // 2) - (dialog_h // 2)
         self.geometry(f"+{pos_x}+{pos_y}")
+
     def on_closing(self):
         logger.info("Diálogo de sessão fechado pelo usuário.")
         self.grab_release()
@@ -92,6 +96,7 @@ class SessionDialog(tk.Toplevel):
             self._callback(None)
         except Exception as e:
             logger.exception(f"Erro callback fechamento: {e}")
+
     def _create_section_new_session(self) -> ttk.Labelframe:
         session_group = ttk.Labelframe(self, text="➕ Nova Sessão", padding=10)
         session_group.columnconfigure(1, weight=1)
@@ -119,6 +124,7 @@ class SessionDialog(tk.Toplevel):
             self._snack_combobox.current(0)
         self._snack_combobox.grid(row=2, column=1, columnspan=3, sticky="ew", padx=5, pady=3)
         return session_group
+
     def _load_snack_options(self) -> Tuple[Set[str], List[str]]:
         try:
             snack_options = load_json('./config/lanches.json')
@@ -132,6 +138,7 @@ class SessionDialog(tk.Toplevel):
             logger.exception("Erro ao carregar './config/lanches.json'.")
             snack_options = ["Erro ao carregar"]
         return set(snack_options), snack_options
+
     def _create_section_class_buttons(self) -> ttk.Frame:
         button_frame = ttk.Frame(self)
         button_frame.columnconfigure(tuple(range(4)), weight=1)
@@ -143,6 +150,7 @@ class SessionDialog(tk.Toplevel):
             ttk.Button(master=button_frame, text=text, command=cmd, bootstyle=style, width=10).grid(
                 row=0, column=i, padx=2, pady=2, sticky='ew')
         return button_frame
+
     def _create_section_edit_session(self) -> ttk.Labelframe:
         edit_group = ttk.Labelframe(self, text="📝 Editar Sessão Existente", padding=10)
         edit_group.columnconfigure(0, weight=1)
@@ -156,6 +164,7 @@ class SessionDialog(tk.Toplevel):
             self._sessions_combobox.current(0)
         self._sessions_combobox.grid(row=0, column=0, sticky="ew", padx=3, pady=3)
         return edit_group
+
     def _load_existing_sessions(self) -> Tuple[Dict[str, int], List[str]]:
         try:
             sessions: List[SessionModel] = self.__session_manager.session_crud.read_all_ordered_by(
@@ -166,6 +175,7 @@ class SessionDialog(tk.Toplevel):
         except Exception as e:
             logger.exception("Erro ao buscar sessões existentes.")
             return {"Erro ao carregar sessões": -1}, ["Erro ao carregar sessões"]
+
     def _create_section_main_buttons(self) -> ttk.Frame:
         button_frame = ttk.Frame(self)
         button_frame.columnconfigure(0, weight=1)
@@ -177,20 +187,24 @@ class SessionDialog(tk.Toplevel):
         ttk.Button(master=button_frame, text="✔️ OK", command=self._on_okay,
                    bootstyle="success").grid(row=0, column=3, padx=5, pady=5)
         return button_frame
+
     def _on_select_meal(self, *_):
         is_lunch = self._meal_combobox.get() == "Almoço"
         self._snack_combobox.config(state='disabled' if is_lunch else 'normal')
         if is_lunch:
             self._snack_combobox.set('')
+
     def _on_clear_classes(self): self._set_class_checkboxes(lambda name, var: False)
     def _on_select_integral(self): self._set_class_checkboxes(lambda name, var: name in INTEGRATE_CLASSES)
     def _on_select_others(self): self._set_class_checkboxes(lambda name, var: name not in INTEGRATE_CLASSES)
     def _on_invert_classes(self): self._set_class_checkboxes(lambda name, var: not var.get())
+
     def _set_class_checkboxes(self, condition_func: callable):
         if not hasattr(self, '_classes_chk_data'):
             return
         for name, var, _ in self._classes_chk_data:
             var.set(condition_func(name, var))
+
     def _validate_new_session_input(self) -> bool:
         try:
             datetime.strptime(self._time_entry.get(), '%H:%M')
@@ -206,6 +220,7 @@ class SessionDialog(tk.Toplevel):
             messagebox.showwarning("Seleção Inválida", "Selecione pelo menos uma turma.", parent=self)
             return False
         return True
+
     def _save_new_snack_option(self, snack_selection: str):
         if snack_selection and snack_selection not in self._lanche_set and "Erro" not in snack_selection:
             capitalized_snack = capitalize(snack_selection)
@@ -218,6 +233,7 @@ class SessionDialog(tk.Toplevel):
             except Exception as e:
                 logger.exception("Erro ao salvar novo lanche.")
                 messagebox.showerror("Erro ao Salvar", "Não foi possível salvar a nova opção de lanche.", parent=self)
+
     def _on_okay(self):
         selected_session_display = self._sessions_combobox.get()
         session_id_to_load = self.sessions_map.get(
@@ -244,6 +260,7 @@ class SessionDialog(tk.Toplevel):
             if self._callback(new_session_data):
                 self.grab_release()
                 self.destroy()
+
     def _on_sync_reserves(self):
         logger.info("Iniciando sincronização de reservas...")
         self.__parent_app.show_progress_bar(True, "Sincronizando reservas...")
@@ -251,6 +268,7 @@ class SessionDialog(tk.Toplevel):
         sync_thread = SyncReserves(self.__session_manager)
         sync_thread.start()
         self._sync_monitor(sync_thread)
+
     def _sync_monitor(self, thread: SyncReserves):
         if thread.is_alive():
             self.after(100, lambda: self._sync_monitor(thread))
@@ -263,6 +281,7 @@ class SessionDialog(tk.Toplevel):
                 logger.info("Sincronização de reservas concluída.")
                 messagebox.showinfo('Sincronização Concluída', 'Reservas sincronizadas com sucesso.', parent=self)
                 self._update_existing_sessions_combobox()
+
     def _update_existing_sessions_combobox(self):
         logger.debug("Atualizando combobox de sessões existentes...")
         self.sessions_map, session_display_list = self._load_existing_sessions()
