@@ -1,135 +1,175 @@
+# ----------------------------------------------------------------------------
+# File: registro/control/sync_thread.py (Threading Wrappers for Sync Ops)
+# ----------------------------------------------------------------------------
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
 
-"""
-Provides threading classes for synchronizing data with a spreadsheet
-and importing reserves and students from a spreadsheet.
-"""
-
+import logging
 from threading import Thread
-
-from registro.control.constants import (RESERVES_CSV_PATH, RESERVES_SHEET_NAME,
-                                        STUDENTS_CSV_PATH, STUDENTS_SHEET_NAME)
+from typing import Optional, List, Any
+from registro.control.constants import (
+    RESERVES_CSV_PATH, RESERVES_SHEET_NAME,
+    STUDENTS_CSV_PATH, STUDENTS_SHEET_NAME,
+    EXPORT_HEADER
+)
 from registro.control.reserves import import_reserves_csv, import_students_csv
 from registro.control.session_manage import SessionManager
-from registro.control.utils import save_csv
+from registro.control.utils import save_csv_from_list
+logger = logging.getLogger(__name__)
 
 
-class SpreadsheetThread(Thread):
-    """
-    A thread class for appending served meals data to a Google Spreadsheet.
+class BaseSyncThread(Thread):
 
-    This thread retrieves the served students from the session manager and
-    appends their information to the specified sheet in the Google Spreadsheet.
-    """
+    def __init__(self, session_manager: SessionManager):
 
-    def __init__(self, session_data: SessionManager):
-        """
-        Initializes the SpreadsheetThread.
-
-        Args:
-            session_data (SessionManager): An instance of SessionManager
-                containing the current session's data.
-        """
-        super().__init__()
-        self._session = session_data
-        self.error = True
+        super().__init__(daemon=True)
+        self._session_manager = session_manager
+        self.error: Optional[Exception] = None
+        self.success: bool = False
 
     def run(self):
-        """
-        Executes the thread's main logic: appending served meals to the sheet.
+        thread_name = self.__class__.__name__
+        try:
+            logger.info(f"Starting thread: {thread_name}")
+            self._run_logic()
 
-        Retrieves served meals data, formats it into rows, and appends
-        the unique rows to the Google Spreadsheet. Sets the 'error' attribute
-        to indicate success or failure.
-        """
-        served_meals = self._session.get_served_students()
+            self.success = self.error is None
+            if self.success:
+                logger.info(f"Thread {thread_name} completed successfully.")
+            else:
+
+                logger.error(f"Thread {thread_name} finished with error: {self.error}")
+        except Exception as e:
+
+            logger.exception(f"Unhandled error in thread {thread_name}: {e}")
+            self.error = e
+            self.success = False
+
+    def _run_logic(self):
+        raise NotImplementedError("Subclasses must implement the _run_logic method.")
+
+
+class SpreadsheetThread(BaseSyncThread):
+    def _run_logic(self):
+        logger.info("SpreadsheetThread: Starting upload of served meals.")
+
+        spreadsheet = self._session_manager.get_spreadsheet()
+        if not spreadsheet:
+            logger.error("SpreadsheetThread: Cannot proceed, SpreadSheet instance is unavailable.")
+            self.error = ValueError("SpreadSheet instance not available.")
+            return
+
+        served_meals = self._session_manager.get_served_students_details()
         if not served_meals:
-            print("Error: Invalid session data provided for upload.")
-            self.error = True
+            logger.info("SpreadsheetThread: No served students found in the current session. Nothing to upload.")
+
             return
 
-        sheet_name = self._session.get_meal_type().capitalize()
-        if not sheet_name:
-            print("Error: 'refeição' not found in metadata to determine sheet name.")
+        meal_type = self._session_manager.get_meal_type()
+        sheet_name = (meal_type or "Unknown").capitalize()
+        session_date = self._session_manager.get_date()
+        if not meal_type or not session_date:
+            logger.error("SpreadsheetThread: Cannot determine target sheet name or session date.")
+            self.error = ValueError("Meal type or session date is missing.")
             return
+        logger.debug(f"SpreadsheetThread: Target sheet name: '{sheet_name}', Session date: {session_date}")
 
-        rows_to_add = []
-        for student in served_meals:
-            try:
-                classes = student[2]
-                if 'MEC' in student[2] or 'MAC' in student[2]:
-                    classes = classes.split(',')
-                    classes = next(
-                        c for c in classes if 'MEC' in c or 'MAC' in c)
+        rows_to_add: List[List[Any]] = []
 
-                row = [
-                    str(student[0]),
-                    str(self._session.get_date()),
-                    str(student[1]),
-                    str(classes),
-                    str(student[4]),
-                    str(student[3])
-                ]
-                rows_to_add.append(row)
-            except IndexError as e:
-                print(f"Error processing student item: {student}. Error: {e}")
-                return
+        for pront, nome, turma, hora, prato_status in served_meals:
+
+            simplified_turma = turma.split(',')[0].strip() if ',' in turma else turma
+            rows_to_add.append([
+                str(pront),
+                str(session_date),
+                str(nome),
+                str(simplified_turma),
+                str(prato_status),
+                str(hora)
+            ])
         if rows_to_add:
-            self.error = not self._session.get_spreadsheet().append_unique_rows(
-                rows_to_add, sheet_name)
+            logger.info(
+                f"SpreadsheetThread: Attempting to append {len(rows_to_add)} unique rows to sheet '{sheet_name}'.")
+
+            success = spreadsheet.append_unique_rows(rows_to_add, sheet_name)
+            if not success:
+
+                logger.error(f"SpreadsheetThread: Failed to append unique rows to sheet '{sheet_name}'.")
+                self.error = RuntimeError(f"Failed to append rows to Google Sheet '{sheet_name}'. Check logs.")
+
         else:
-            self.error = False
-        return
+
+            logger.info("SpreadsheetThread: No rows formatted for adding to the sheet.")
 
 
-class SyncReserves(Thread):
-    """
-    A thread class for synchronizing student and reserve data from a
-    Google Spreadsheet to the local database.
+class SyncReserves(BaseSyncThread):
+    def _run_logic(self):
+        logger.info("SyncReserves: Starting synchronization from Google Sheets to local DB.")
+        spreadsheet = self._session_manager.get_spreadsheet()
+        if not spreadsheet:
+            logger.error("SyncReserves: Cannot proceed, SpreadSheet instance is unavailable.")
+            self.error = ValueError("SpreadSheet instance not available.")
+            return
 
-    This thread fetches data from the "Discentes" and "DB" sheets, saves
-    it to CSV files, and then imports this data into the respective
-    database tables.
-    """
+        logger.info(f"SyncReserves: Fetching student data from sheet '{STUDENTS_SHEET_NAME}'...")
+        students_data = spreadsheet.fetch_sheet_values(STUDENTS_SHEET_NAME)
+        if students_data is None:
+            logger.error(
+                f"SyncReserves: Failed to fetch data from student sheet '{STUDENTS_SHEET_NAME}'. Aborting sync.")
+            self.error = RuntimeError(f"Failed to fetch data from sheet '{STUDENTS_SHEET_NAME}'.")
+            return
+        if not students_data or len(students_data) <= 1:
+            logger.warning(
+                f"SyncReserves: Student sheet '{STUDENTS_SHEET_NAME}' is empty or contains only headers. Skipping student import.")
 
-    def __init__(self, session_data: SessionManager):
-        """
-        Initializes the SyncReserves thread.
+        else:
+            logger.info(
+                f"SyncReserves: Saving {len(students_data)} rows from student sheet to '{STUDENTS_CSV_PATH}'...")
 
-        Args:
-            session_data (SessionManager): An instance of SessionManager
-                providing access to the database CRUD operations and the
-                Google Spreadsheet.
-        """
-        super().__init__()
-        self._session = session_data
-        self.error = True
+            if save_csv_from_list(students_data, str(STUDENTS_CSV_PATH)):
+                logger.info(f"SyncReserves: Student data saved to CSV. Importing to database...")
 
-    def run(self):
-        """
-        Executes the thread's main logic: fetching and importing data.
+                if not import_students_csv(self._session_manager.student_crud,
+                                           self._session_manager.turma_crud,
+                                           str(STUDENTS_CSV_PATH)):
+                    logger.error("SyncReserves: Failed to import student data from CSV to database. Aborting sync.")
+                    self.error = RuntimeError("Failed to import students from CSV.")
+                    return
+                logger.info("SyncReserves: Student data imported successfully.")
+            else:
+                logger.error(f"SyncReserves: Failed to save student data to CSV '{STUDENTS_CSV_PATH}'. Aborting sync.")
+                self.error = RuntimeError(f"Failed to save students to CSV '{STUDENTS_CSV_PATH}'.")
+                return
 
-        Fetches student data from the "Discentes" sheet, saves it to a CSV
-        file, and imports it into the students table. Then, fetches reserve
-        data from the "DB" sheet, saves it to a CSV file, and imports it into
-        the reserves table. Sets the 'error' attribute to indicate success.
-        """
-        discentes_list = self._session.get_spreadsheet(
-        ).fetch_sheet_values(STUDENTS_SHEET_NAME)
-        if discentes_list:
-            if save_csv(discentes_list, STUDENTS_CSV_PATH):
-                import_students_csv(
-                    self._session.student_crud,
-                    self._session.turma_crud,
-                    STUDENTS_CSV_PATH)
-            self.error = False
+        logger.info(f"SyncReserves: Fetching reservation data from sheet '{RESERVES_SHEET_NAME}'...")
+        reserves_data = spreadsheet.fetch_sheet_values(RESERVES_SHEET_NAME)
+        if reserves_data is None:
+            logger.error(
+                f"SyncReserves: Failed to fetch data from reserves sheet '{RESERVES_SHEET_NAME}'. Aborting sync.")
+            self.error = RuntimeError(f"Failed to fetch data from sheet '{RESERVES_SHEET_NAME}'.")
+            return
+        if not reserves_data or len(reserves_data) <= 1:
+            logger.warning(
+                f"SyncReserves: Reserves sheet '{RESERVES_SHEET_NAME}' is empty or contains only headers. Skipping reserves import.")
 
-        reserves_list = self._session.get_spreadsheet(
-        ).fetch_sheet_values(RESERVES_SHEET_NAME)
-        if reserves_list:
-            if save_csv(reserves_list, RESERVES_CSV_PATH):
-                import_reserves_csv(self._session.student_crud,
-                                    self._session.reserve_crud,
-                                    RESERVES_CSV_PATH)
-            self.error = False or self.error
+        else:
+            logger.info(
+                f"SyncReserves: Saving {len(reserves_data)} rows from reserves sheet to '{RESERVES_CSV_PATH}'...")
+
+            if save_csv_from_list(reserves_data, str(RESERVES_CSV_PATH)):
+                logger.info(f"SyncReserves: Reservation data saved to CSV. Importing to database...")
+
+                if not import_reserves_csv(self._session_manager.student_crud,
+                                           self._session_manager.reserve_crud,
+                                           str(RESERVES_CSV_PATH)):
+                    logger.error("SyncReserves: Failed to import reservation data from CSV to database. Aborting sync.")
+                    self.error = RuntimeError("Failed to import reserves from CSV.")
+                    return
+                logger.info("SyncReserves: Reservation data imported successfully.")
+            else:
+                logger.error(
+                    f"SyncReserves: Failed to save reservation data to CSV '{RESERVES_CSV_PATH}'. Aborting sync.")
+                self.error = RuntimeError(f"Failed to save reserves to CSV '{RESERVES_CSV_PATH}'.")
+                return
+
+        logger.info("SyncReserves: Synchronization process completed.")

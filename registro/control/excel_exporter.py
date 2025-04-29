@@ -1,96 +1,115 @@
+# ----------------------------------------------------------------------------
+# File: registro/control/excel_exporter.py (Refined Excel Exporter)
+# ----------------------------------------------------------------------------
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
-
-"""
-Exports session consumption data to an Excel spreadsheet.
-"""
-
+import logging
 import os
-from typing import List, Optional, Tuple
-
+import re
+from pathlib import Path
+from typing import List, Optional, Tuple, NamedTuple
 import xlsxwriter
-
+from xlsxwriter.exceptions import XlsxWriterException
 from registro.control.constants import EXPORT_HEADER
-from registro.control.utils import get_documments_path
+from registro.control.utils import get_documents_path
+logger = logging.getLogger(__name__)
+
+
+class ServedMealRecord(NamedTuple):
+    pront: str
+    nome: str
+    turma: str
+    hora_consumo: str
+    prato: str
+
+
+def _sanitize_filename_part(part: str) -> str:
+
+    part = re.sub(r'[\\/*?:\[\]]', '', part)
+    part = part.replace(':', '.')
+
+    return part[:30]
 
 
 def export_to_excel(
-    served_meals_data: List[Tuple[str, str, str, str, str]],
+    served_meals_data: List[ServedMealRecord],
     meal_type: str,
     session_date: str,
     session_time: str,
-) -> Optional[str]:
-    """
-    Exports the provided served students data to an Excel spreadsheet.
+) -> Optional[Path]:
+    if not served_meals_data:
+        logger.warning("No served meals data provided for Excel export. Skipping.")
 
-    Args:
-        served_meals_data (List[Tuple]): List of tuples containing served student info:
-                                         (PRONT, Nome, Turma, HoraConsumo, Refeição/Prato).
-        meal_type (str): The type of meal (e.g., 'Almoço', 'Lanche').
-        session_date (str): The date of the session (e.g., 'YYYY/MM/DD').
-        session_time (str): The time of the session (e.g., 'HH:MM').
-
-    Returns:
-        bool: True if the export was successful, False otherwise.
-    """
-    if not all([served_meals_data, meal_type, session_date, session_time]):
-        print("Error: Missing data for Excel export.")
         return None
-
+    if not all([meal_type, session_date, session_time]):
+        logger.error("Insufficient session metadata (meal_type, date, time) provided for Excel export.")
+        return None
+    output_path: Optional[Path] = None
     try:
-        # Sanitize filename components
-        safe_date_time = f"{session_date.replace('/', '-')} {session_time.replace(':', '.')}"
 
-        # Ensure the documents directory exists
-        docs_path = get_documments_path()
-        os.makedirs(docs_path, exist_ok=True)  # Create if it doesn't exist
+        safe_meal_type = _sanitize_filename_part(meal_type)
 
-        last_exported_path = os.path.join(
-            docs_path, f"{meal_type.lower()} {safe_date_time}.xlsx")
+        safe_date = session_date
+        safe_time = _sanitize_filename_part(session_time)
+        filename_base = f"{safe_meal_type} {safe_date} {safe_time}.xlsx"
+        docs_path_str = get_documents_path()
+        docs_path = Path(docs_path_str)
 
-        workbook = xlsxwriter.Workbook(last_exported_path)
-        worksheet_name = f"{meal_type} {safe_date_time}"[
-            :31] 
-        worksheet = workbook.add_worksheet(worksheet_name)
+        output_path = docs_path / filename_base
 
-        header_format = workbook.add_format({'bold': True})
+        with xlsxwriter.Workbook(output_path, {'constant_memory': True}) as workbook:
 
-        for hcol, item in enumerate(EXPORT_HEADER):
-            worksheet.write(0, hcol, item, header_format)
+            worksheet_name = _sanitize_filename_part(f"{safe_meal_type}_{safe_date}_{safe_time}")
+            worksheet = workbook.add_worksheet(worksheet_name)
 
-        # Write data rows
-        # Start data from row 1
-        for row_idx, item in enumerate(served_meals_data, start=1):
-            # Ensure item has the expected number of elements
-            if len(item) == 5:  # (PRONT, Nome, Turma, HoraConsumo, Refeição/Prato)
-                worksheet.write(row_idx, 0, item[0])      # Matrícula
-                worksheet.write(row_idx, 1, session_date)
-                worksheet.write(row_idx, 2, item[1])        # Nome
-                worksheet.write(row_idx, 3, item[2])       # Turma
-                worksheet.write(row_idx, 4, item[4])    # Refeição
-                # Hora (Consumption Time)
-                worksheet.write(row_idx, 5, item[3])
-            else:
-                print(
-                    f"Warning: Skipping row {row_idx} due to unexpected data format: {item}")
+            header_format = workbook.add_format(
+                {'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1})
+            cell_format = workbook.add_format(
+                {'border': 1, 'valign': 'vcenter'})
 
-        # Optional: Adjust column widths
-        worksheet.set_column('A:A', 12)  # Matrícula
-        worksheet.set_column('B:B', 12)  # Data
-        worksheet.set_column('C:C', 40)  # Nome
-        worksheet.set_column('D:D', 20)  # Turma
-        worksheet.set_column('E:E', 45)  # Refeição
-        worksheet.set_column('F:F', 10)  # Hora
+            worksheet.write_row(0, 0, EXPORT_HEADER, header_format)
+            worksheet.freeze_panes(1, 0)
 
-        workbook.close()
-        print(f"Successfully exported data to {last_exported_path}")
-        return last_exported_path
+            row_idx = 1
+            for record in served_meals_data:
 
-    except (IOError, ValueError, xlsxwriter.exceptions.XlsxWriterException) as e:
-        print(f"Error exporting to Excel: {e}")
-        last_exported_path = None
+                data_row = [
+                    record.pront,
+                    session_date,
+                    record.nome,
+                    record.turma,
+                    record.prato,
+                    record.hora_consumo
+                ]
+
+                worksheet.write_row(row_idx, 0, data_row, cell_format)
+                row_idx += 1
+
+            worksheet.set_column(0, 0, 12)
+            worksheet.set_column(1, 1, 12)
+            worksheet.set_column(2, 2, 40)
+            worksheet.set_column(3, 3, 25)
+            worksheet.set_column(4, 4, 30)
+            worksheet.set_column(5, 5, 10)
+
+        logger.info(f"Served meal data successfully exported to {output_path}")
+        return output_path
+    except (IOError, OSError, XlsxWriterException) as e:
+        logger.exception(f"File I/O or XlsxWriter error during Excel export: {e}")
+
+        if output_path and output_path.exists():
+            try:
+                os.remove(output_path)
+                logger.info(f"Removed partial file: {output_path}")
+            except OSError as remove_err:
+                logger.warning(f"Could not remove partial file {output_path}: {remove_err}")
         return None
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"An unexpected error occurred during Excel export: {e}")
-        last_exported_path = None
+    except Exception as e:
+        logger.exception(f"Unexpected error during Excel export: {e}")
+        if output_path and output_path.exists():
+            try:
+                os.remove(output_path)
+                logger.info(f"Removed partial file: {output_path}")
+            except OSError as remove_err:
+                logger.warning(f"Could not remove partial file {output_path}: {remove_err}")
         return None

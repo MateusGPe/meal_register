@@ -1,110 +1,142 @@
+# ----------------------------------------------------------------------------
+# File: registro/control/google_creds.py (Refined Google Creds Manager)
+# ----------------------------------------------------------------------------
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
-
-"""
-Provides a class to handle granting and managing access to Google Sheets and Drive
-using the Google Sheets API and Google Drive API.
-
-The `GrantAccess` class simplifies the process of managing Google API credentials by:
-- Checking for existing valid credentials.
-- Refreshing expired credentials automatically.
-- Initiating a new authorization flow if no valid credentials are found.
-- Saving credentials to a token file for reuse in subsequent sessions.
-
-This class is designed to work with the Google Sheets API and Google Drive API.
-"""
-
-import os.path
+import json
+import logging
+from pathlib import Path
 from typing import Optional, Self
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-
+from google.auth.exceptions import RefreshError
 from registro.control.constants import CREDENTIALS_PATH, SCOPES, TOKEN_PATH
+from registro.control.utils import save_json
+logger = logging.getLogger(__name__)
 
 
 class GrantAccess:
-    """
-    Handles the process of granting and managing access to Google Sheets and Drive.
-
-    This class provides methods to manage Google API credentials, ensuring that
-    the application has the necessary access to interact with Google Sheets and Drive.
-    It supports refreshing expired tokens and initiating new authorization flows
-    when required.
-
-    Attributes:
-        _credentials (Optional[Credentials]): The current Google API credentials.
-        _credentials_path (str): The path to the Google Cloud client secrets JSON file.
-        _token_path (str): The path to the token file containing the access token.
-    """
-
-    def __init__(self: Self, credentials_path: str = CREDENTIALS_PATH,
-                 token_path: str = TOKEN_PATH):
-        """
-        Initializes the GrantAccess object.
-
-        Args:
-            credentials_path (str): The path to the Google Cloud client secrets JSON file.
-                This file contains the client ID and client secret for the application.
-                Defaults to "./config/credentials.json".
-            token_path (str): The path to the token file containing the access token.
-                This file is used to store and reuse credentials between sessions.
-                Defaults to "./config/token.json".
-        """
+    def __init__(self: Self, credentials_path: Path = CREDENTIALS_PATH,
+                 token_path: Path = TOKEN_PATH):
         self._credentials: Optional[Credentials] = None
-        self._credentials_path: str = credentials_path
-        self._token_path: str = token_path
 
-    def reflesh_token(self: Self) -> Self:
-        """
-        Refreshes or obtains new Google API credentials.
+        self._credentials_path: Path = Path(credentials_path)
+        self._token_path: Path = Path(token_path)
+        logger.debug(
+            f"GrantAccess initialized. Credentials: '{self._credentials_path}', Token: '{self._token_path}'")
 
-        This method performs the following steps:
-        1. Checks if a token file exists at the specified `token_path`.
-        2. If the token file exists, it loads the credentials from the file.
-        3. If the credentials are expired but have a refresh token, it refreshes them.
-        4. If no valid credentials are found, it initiates a new authorization flow
-           using the client secrets file at `credentials_path`.
-        5. Saves the refreshed or newly obtained credentials to the token file.
+    def _load_token(self) -> Optional[Credentials]:
+        if self._token_path.exists():
+            try:
+                creds = Credentials.from_authorized_user_file(str(self._token_path), SCOPES)
+                logger.info(f"Token loaded successfully from '{self._token_path}'")
+                return creds
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load token from '{self._token_path}': {e}. "
+                    "Will attempt to initiate a new authorization flow if needed.")
 
-        Returns:
-            Self: The current instance of the `GrantAccess` class with updated credentials.
+                try:
+                    self._token_path.unlink(missing_ok=True)
+                    logger.debug(f"Removed potentially invalid token file: '{self._token_path}'")
+                except OSError as rm_err:
+                    logger.error(f"Could not remove invalid token file '{self._token_path}': {rm_err}")
+        else:
+            logger.debug(f"Token file not found at '{self._token_path}'.")
+        return None
 
-        Raises:
-            FileNotFoundError: If the credentials file does not exist.
-            Exception: If an error occurs during the authorization flow or token refresh.
-        """
-        if os.path.exists(self._token_path):
-            self._credentials = Credentials.from_authorized_user_file(
-                self._token_path, SCOPES)
+    def _save_token(self, creds: Credentials):
+        try:
 
-        if not self._credentials or not self._credentials.valid:
-            if self._credentials and self._credentials.expired and self._credentials.refresh_token:
-                self._credentials.refresh(Request())
+            self._token_path.parent.mkdir(parents=True, exist_ok=True)
+
+            creds_dict = json.loads(creds.to_json())
+
+            if save_json(str(self._token_path), creds_dict):
+                logger.info(f"Credentials saved successfully to '{self._token_path}'")
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self._credentials_path, SCOPES
-                )
-                self._credentials = flow.run_local_server(port=0)
 
-            with open(self._token_path, "w", encoding="utf-8") as token:
-                token.write(self._credentials.to_json())
+                logger.error(f"Failed to save credentials using save_json to '{self._token_path}'")
+        except Exception as e:
+
+            logger.exception(f"Unexpected error saving token to '{self._token_path}': {e}")
+
+    def _run_auth_flow(self) -> Optional[Credentials]:
+        logger.info("Attempting to initiate new authorization flow.")
+        try:
+            if not self._credentials_path.exists():
+                logger.error(f"Credentials file not found: '{self._credentials_path}'. Cannot start authorization.")
+                return None
+            flow = InstalledAppFlow.from_client_secrets_file(str(self._credentials_path), SCOPES)
+
+            logger.info("Starting local server for authorization. Please check your browser.")
+
+            creds = flow.run_local_server(port=0)
+            logger.info("Authorization flow completed successfully.")
+            return creds
+        except FileNotFoundError:
+            logger.error(f"Credentials file disappeared: '{self._credentials_path}'.")
+        except Exception as e:
+            logger.exception(f"Error during the authorization flow: {e}")
+        return None
+
+    def refresh_or_obtain_credentials(self: Self) -> Self:
+        creds = self._load_token()
+        if creds and creds.valid:
+            logger.info("Using valid credentials loaded from token file.")
+            self._credentials = creds
+        elif creds and creds.expired and creds.refresh_token:
+            logger.info("Credentials expired, attempting refresh...")
+            try:
+                creds.refresh(Request())
+                logger.info("Credentials refreshed successfully.")
+                self._credentials = creds
+                self._save_token(creds)
+            except RefreshError as e:
+                logger.error(f"Failed to refresh credentials: {e}. Initiating new authorization flow.")
+
+                try:
+                    self._token_path.unlink(missing_ok=True)
+                except OSError as rm_err:
+                    logger.error(f"Could not remove token file after refresh error: {rm_err}")
+                creds = self._run_auth_flow()
+                if creds:
+                    self._credentials = creds
+                    self._save_token(creds)
+                else:
+                    logger.error("Failed to obtain new credentials after refresh failure.")
+                    self._credentials = None
+            except Exception as e:
+                logger.exception(f"Unexpected error during credential refresh: {e}. Initiating new flow.")
+                try:
+                    self._token_path.unlink(missing_ok=True)
+                except OSError as rm_err:
+                    logger.error(f"Could not remove token: {rm_err}")
+                creds = self._run_auth_flow()
+                if creds:
+                    self._credentials = creds
+                    self._save_token(creds)
+                else:
+                    logger.error("Failed to obtain new credentials.")
+                    self._credentials = None
+        else:
+            if creds and not creds.refresh_token:
+                logger.info("Credentials expired and no refresh token available. Initiating new authorization flow.")
+            elif not creds:
+                logger.info("No existing token found. Initiating new authorization flow.")
+
+            creds = self._run_auth_flow()
+            if creds:
+                self._credentials = creds
+                self._save_token(creds)
+            else:
+                logger.error("Failed to obtain new credentials via authorization flow.")
+                self._credentials = None
         return self
 
-    def get_credentials(self: Self) -> Credentials:
-        """
-        Retrieves the current Google API credentials.
-
-        This method should be called after ensuring that the credentials are valid
-        (e.g., by calling `reflesh_token`).
-
-        Returns:
-            Credentials: The current Google API credentials.
-
-        Raises:
-            ValueError: If the credentials are not initialized or invalid.
-        """
+    def get_credentials(self: Self) -> Optional[Credentials]:
         if not self._credentials:
-            raise ValueError("Credentials are not initialized. Call `reflesh_token` first.")
+
+            logger.warning("get_credentials() called, but credentials are not available or valid.")
         return self._credentials
