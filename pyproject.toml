@@ -13,6 +13,8 @@ xlsxwriter = "^3.2.2"
 fuzzywuzzy = "^0.18.0"
 python-levenshtein = "^0.27.1"
 sqlalchemy = "^2.0.40"
+pytest = "^8.3.5"
+pytest-mock = "^3.14.0"
 
 
 [build-system]

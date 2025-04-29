@@ -3,7 +3,6 @@
 # ----------------------------------------------------------------------------
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
-
 import logging
 import re
 import tkinter as tk
@@ -22,13 +21,11 @@ if TYPE_CHECKING:
     from ttkbootstrap.tableview import Tableview as ttkTableview
 logger = logging.getLogger(__name__)
 
-
 class SearchStudents(ttk.Frame):
     """
     Frame containing search input, results treeview, and registration actions
     for the 'Register Student' tab.
     """
-
     def __init__(self, parent_notebook: ttk.Notebook, session_manager: 'SessionManager',
                  registered_table: 'ttkTableview', main_app: 'RegistrationApp'):
         """
@@ -51,7 +48,6 @@ class SearchStudents(ttk.Frame):
         self._tree_view.bind("<Double-1>", self._on_double_click_register)
         self._entry.bind('<Return>', self._on_enter_register)
         self.focus_search_entry()
-
     def _create_search_bar(self):
         """ Creates the top bar with search entry, buttons, and feedback label. """
         search_bar = ttk.Frame(self)
@@ -72,7 +68,6 @@ class SearchStudents(ttk.Frame):
         self.last_action_label = ttk.Label(
             search_bar, text='Enter name or prontuario to search...', anchor='center', font=(None, 9))
         self.last_action_label.grid(sticky="ew", column=0, columnspan=3, row=1, padx=0, pady=(3, 0))
-
     def _create_treeview(self) -> tuple[ttk.Frame, ttk.Treeview]:
         """ Creates the Treeview widget to display search results. """
         tv_frame = ttk.Frame(self)
@@ -102,7 +97,6 @@ class SearchStudents(ttk.Frame):
         tree.column("#0", width=0, stretch=tk.NO)
         tree.heading("#0", text="ID")
         return tv_frame, tree
-
     def _on_entry_change(self, *args):
         """ Called automatically when the search entry text changes. """
         search_term = self._entry_var.get()
@@ -112,17 +106,14 @@ class SearchStudents(ttk.Frame):
             self._update_last_action_label("info", "Enter at least 2 characters to search...")
             return
         self._update_treeview_data(search_term)
-
     def _on_click_register(self):
         """ Handles the 'Register' button click. """
         self._register_selected_student()
-
     def _on_enter_register(self, event=None):
         """ Handles the Enter key press in the search entry. """
         if self._last_selected_student:
             self._register_selected_student()
         return "break"
-
     def _on_double_click_register(self, event=None):
         """ Handles double-clicking a row in the Treeview. """
         selected_iid = self._tree_view.focus()
@@ -133,7 +124,6 @@ class SearchStudents(ttk.Frame):
             else:
                 logger.warning(f"Double-click on unknown IID: {selected_iid}")
         return "break"
-
     def _on_tree_select(self, event=None):
         """ Updates the selected student state when a Treeview row is selected. """
         selected_items = self._tree_view.selection()
@@ -158,7 +148,6 @@ class SearchStudents(ttk.Frame):
         else:
             logger.error(f"Selected IID '{selected_iid}' not found in student cache!")
             self._update_last_action_label("danger-inverse", "Error: Selected student data not found.")
-
     def _register_selected_student(self):
         """ Attempts to register the student stored in _last_selected_student. """
         if self._last_selected_student:
@@ -167,7 +156,6 @@ class SearchStudents(ttk.Frame):
             messagebox.showwarning("No Student Selected",
                                    "Please select a student from the search results to register.", parent=self)
             logger.debug("Register attempt failed: No student selected.")
-
     def _register_student(self, student_data: Dict[str, Any]) -> bool:
         """
         Handles the process of registering a student.
@@ -218,7 +206,6 @@ class SearchStudents(ttk.Frame):
                 messagebox.showerror(title, message, parent=self)
                 self._update_last_action_label("danger-inverse", f"ERROR registering {pront}")
             return False
-
     def _update_treeview_data(self, search_term: str):
         """ Filters eligible students based on search term and updates the Treeview. """
         term_lower = search_term.lower().strip()
@@ -281,7 +268,6 @@ class SearchStudents(ttk.Frame):
         else:
             self._update_last_action_label("warning", "No matching students found.")
             self._last_selected_student = None
-
     def _clear_treeview(self):
         """ Safely deletes all items from the search results Treeview. """
         try:
@@ -289,7 +275,6 @@ class SearchStudents(ttk.Frame):
                 self._tree_view.delete(item)
         except tk.TclError as e:
             logger.error(f"Error clearing treeview: {e}")
-
     def _add_items_to_treeview(self, data: List[Dict[str, Any]]):
         """ Adds items (dictionaries) to the search results Treeview. """
         for item in data:
@@ -306,7 +291,6 @@ class SearchStudents(ttk.Frame):
                     logger.warning(f"Attempted to insert duplicate IID '{item_id}' into Treeview.")
                 else:
                     logger.exception(f"TclError inserting item '{item_id}' into Treeview: {e}")
-
     def _sort_treeview_column(self, tree: Treeview, col_key: str, reverse: bool):
         """ Sorts the Treeview items based on the clicked column header. """
         try:
@@ -328,14 +312,12 @@ class SearchStudents(ttk.Frame):
                 logger.error(f"Error moving treeview item '{item_id}' during sort: {move_err}")
         tree.heading(col_key, command=partial(self._sort_treeview_column, tree, col_key, not reverse))
         logger.debug(f"Treeview sorted by column '{col_key}', reverse={reverse}")
-
     def _find_student_in_cache_by_id(self, student_lookup_key: str) -> Optional[Dict[str, Any]]:
         """ Finds a student dictionary in the SessionManager's eligible list using the lookup_key. """
         eligible_students = self._session.get_eligible_students()
         if eligible_students is None:
             return None
         return next((s for s in eligible_students if s.get('lookup_key') == student_lookup_key), None)
-
     def _update_last_action_label(self, style: str, text: str):
         """ Safely updates the text and style of the feedback label. """
         try:
@@ -348,17 +330,14 @@ class SearchStudents(ttk.Frame):
                 self.last_action_label.config(text=display_text, bootstyle='default')
             except tk.TclError:
                 pass
-
     def clear_search(self):
         """ Clears the search entry and the results treeview. """
         logger.debug("Clearing search input and results.")
         self._entry_var.set('')
-
     def refresh_search_results(self):
         """ Re-runs the current search query to update the results list. """
         logger.debug("Refreshing search results.")
         self._on_entry_change()
-
     def focus_search_entry(self):
         """ Sets the keyboard focus to the search entry field. """
         self._entry.focus_set()
