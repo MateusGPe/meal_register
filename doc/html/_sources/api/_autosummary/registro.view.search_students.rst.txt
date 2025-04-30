@@ -1,0 +1,6 @@
+﻿registro.view.search\_students
+==============================
+
+.. currentmodule:: registro.view.search_students
+
+.. automodule:: registro.view.search_students
