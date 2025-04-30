@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------------
 # File: registro/view/gui.py (View/Aplicação Principal Refatorada)
 # ----------------------------------------------------------------------------
@@ -20,18 +19,18 @@ import sys
 import tkinter as tk
 from datetime import datetime
 from functools import partial
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from threading import Thread
 from tkinter import TclError, messagebox
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-import ttkbootstrap as ttkb
 import ttkbootstrap as ttk
 from fuzzywuzzy import fuzz
-from ttkbootstrap.constants import (BOTH, CENTER, DANGER, DEFAULT, DISABLED,
-                                    END, EW, HORIZONTAL, INFO, LEFT, LIGHT,
-                                    NORMAL, NS, NSEW, PRIMARY, RIGHT, SUCCESS,
-                                    VERTICAL, WARNING, YES, E, N, S, W, X)
+from ttkbootstrap.constants import (CENTER, DANGER, DEFAULT, DISABLED, END,
+                                    HORIZONTAL, INFO, LEFT, LIGHT, NORMAL,
+                                    PRIMARY, RIGHT, SUCCESS, VERTICAL, WARNING,
+                                    E, W, X)
 
 # Importações locais
 from registro.control.constants import (LOG_DIR, PRONTUARIO_CLEANUP_REGEX,
@@ -53,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 class SimpleTreeView:
     """
-    Um wrapper em torno de ttkb.Treeview que fornece funcionalidades comuns
+    Um wrapper em torno de ttk.Treeview que fornece funcionalidades comuns
     de tabela como carregamento de dados, manipulação de linhas, tratamento
     de seleção, ordenação e identificação de cliques.
     """
@@ -102,12 +101,12 @@ class SimpleTreeView:
         logger.debug("Colunas SimpleTreeView: IDs=%s", self.column_ids)
 
         # --- Criação dos Widgets ---
-        self.frame = ttkb.Frame(master)
+        self.frame = ttk.Frame(master)
         self.frame.grid_rowconfigure(0, weight=1)
         self.frame.grid_columnconfigure(0, weight=1)
 
         # Cria o Treeview
-        self.view = ttkb.Treeview(
+        self.view = ttk.Treeview(
             self.frame,
             columns=self.column_ids,  # Define as colunas pelo ID interno
             show="headings",  # Mostra apenas cabeçalhos, não a coluna #0
@@ -118,9 +117,9 @@ class SimpleTreeView:
         self.view.grid(row=0, column=0, sticky="nsew")
 
         # Scrollbars
-        sb_v = ttkb.Scrollbar(self.frame, orient=VERTICAL, command=self.view.yview)
+        sb_v = ttk.Scrollbar(self.frame, orient=VERTICAL, command=self.view.yview)
         sb_v.grid(row=0, column=1, sticky="ns")
-        sb_h = ttkb.Scrollbar(self.frame, orient=HORIZONTAL, command=self.view.xview)
+        sb_h = ttk.Scrollbar(self.frame, orient=HORIZONTAL, command=self.view.xview)
         sb_h.grid(row=1, column=0, sticky="ew")
         self.view.configure(yscrollcommand=sb_v.set, xscrollcommand=sb_h.set)
 
@@ -363,7 +362,7 @@ class SimpleTreeView:
 # ----------------------------------------------------------------------------
 
 
-class ActionSearchPanel(ttkb.Frame):
+class ActionSearchPanel(ttk.Frame):
     """
     Painel contendo a barra de busca, lista de alunos elegíveis, preview
     e botão de registro.
@@ -390,12 +389,12 @@ class ActionSearchPanel(ttkb.Frame):
 
         # Widgets (inicializados nos métodos _create_*)
         self._search_entry_var: tk.StringVar = tk.StringVar()
-        self._search_entry: Optional[ttkb.Entry] = None
-        self._clear_button: Optional[ttkb.Button] = None
+        self._search_entry: Optional[ttk.Entry] = None
+        self._clear_button: Optional[ttk.Button] = None
         self._eligible_students_tree: Optional[SimpleTreeView] = None
-        self._selected_student_label: Optional[ttkb.Label] = None
-        self._register_button: Optional[ttkb.Button] = None
-        self._action_feedback_label: Optional[ttkb.Label] = None
+        self._selected_student_label: Optional[ttk.Label] = None
+        self._register_button: Optional[ttk.Button] = None
+        self._action_feedback_label: Optional[ttk.Label] = None
 
         # Configuração do Grid interno do painel
         self.grid_rowconfigure(1, weight=1)  # Área da lista expande verticalmente
@@ -416,12 +415,12 @@ class ActionSearchPanel(ttkb.Frame):
 
     def _create_search_bar(self):
         """ Cria a barra de busca com entrada e botão de limpar. """
-        search_bar = ttkb.Frame(self)
+        search_bar = ttk.Frame(self)
         search_bar.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         search_bar.grid_columnconfigure(0, weight=1)  # Entry expande
 
         # Campo de entrada da busca
-        self._search_entry = ttkb.Entry(
+        self._search_entry = ttk.Entry(
             search_bar,
             textvariable=self._search_entry_var,
             font=(None, 12),
@@ -432,7 +431,7 @@ class ActionSearchPanel(ttkb.Frame):
         self._search_entry_var.trace_add("write", self._on_search_entry_change)
 
         # Botão para limpar a busca
-        self._clear_button = ttkb.Button(
+        self._clear_button = ttk.Button(
             search_bar,
             text=UI_TEXTS.get("clear_search_button", "❌"),
             width=3,
@@ -443,7 +442,7 @@ class ActionSearchPanel(ttkb.Frame):
 
     def _create_eligible_list(self):
         """ Cria a tabela (SimpleTreeView) para exibir os alunos elegíveis. """
-        eligible_frame = ttkb.Labelframe(
+        eligible_frame = ttk.Labelframe(
             self, text=UI_TEXTS.get("eligible_students_label", "🔍 Alunos Elegíveis (Resultados da Busca)"), padding=(5, 5)
         )
         # Posiciona abaixo da busca
@@ -467,11 +466,11 @@ class ActionSearchPanel(ttkb.Frame):
 
     def _create_preview_area(self):
         """ Cria a área para exibir informações do aluno selecionado. """
-        preview_frame = ttkb.Frame(self, padding=(0, 5))
+        preview_frame = ttk.Frame(self, padding=(0, 5))
         # Posiciona abaixo da lista de elegíveis
         preview_frame.grid(row=2, column=0, sticky="ew", pady=(5, 5))
         # Label para o preview
-        self._selected_student_label = ttkb.Label(
+        self._selected_student_label = ttk.Label(
             preview_frame,
             text=UI_TEXTS.get("select_student_preview", "Selecione um aluno da lista."),
             justify=LEFT,
@@ -482,13 +481,13 @@ class ActionSearchPanel(ttkb.Frame):
 
     def _create_action_area(self):
         """ Cria a área com o botão de registrar e o label de feedback. """
-        action_frame = ttkb.Frame(self)
+        action_frame = ttk.Frame(self)
         # Posiciona abaixo do preview
         action_frame.grid(row=3, column=0, sticky="ew", pady=(5, 0))
         action_frame.columnconfigure(0, weight=1)  # Botão expande
 
         # Botão de Registrar
-        self._register_button = ttkb.Button(
+        self._register_button = ttk.Button(
             action_frame,
             text=UI_TEXTS.get("register_selected_button", "➕ Registrar Selecionado"),
             command=self._register_selected_eligible,  # Chama método local
@@ -498,7 +497,7 @@ class ActionSearchPanel(ttkb.Frame):
         self._register_button.pack(side=LEFT, fill=X, expand=True, padx=(0, 10))
 
         # Label para feedback da última ação (registro, erro, etc.)
-        self._action_feedback_label = ttkb.Label(
+        self._action_feedback_label = ttk.Label(
             action_frame, text="", width=35, anchor=E, style="Feedback.TLabel"  # Alinha à direita
         )
         self._action_feedback_label.pack(side=RIGHT)
@@ -912,7 +911,7 @@ class ActionSearchPanel(ttkb.Frame):
 # ----------------------------------------------------------------------------
 
 
-class StatusRegisteredPanel(ttkb.Frame):
+class StatusRegisteredPanel(ttk.Frame):
     """
     Painel exibindo contadores (Registrados/Restantes) e a tabela de
     alunos já registrados na sessão atual, com opção de remoção.
@@ -934,8 +933,8 @@ class StatusRegisteredPanel(ttkb.Frame):
         self._session_manager = session_manager
 
         # --- Atributos de Widgets Internos ---
-        self._registered_count_label: Optional[ttkb.Label] = None
-        self._remaining_count_label: Optional[ttkb.Label] = None
+        self._registered_count_label: Optional[ttk.Label] = None
+        self._remaining_count_label: Optional[ttk.Label] = None
         self._registered_students_table: Optional[SimpleTreeView] = None
 
         # Configuração do Grid interno
@@ -974,11 +973,11 @@ class StatusRegisteredPanel(ttkb.Frame):
 
     def _create_counters_area(self):
         """ Cria a área superior com os labels de contagem. """
-        counters_frame = ttkb.Frame(self)
+        counters_frame = ttk.Frame(self)
         counters_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
 
         # Label Contagem Registrados
-        self._registered_count_label = ttkb.Label(
+        self._registered_count_label = ttk.Label(
             counters_frame,
             # Texto inicial, será atualizado por update_counters()
             text=UI_TEXTS.get("registered_count_label", "Registrados: {count}").format(count="-"),
@@ -990,7 +989,7 @@ class StatusRegisteredPanel(ttkb.Frame):
         self._registered_count_label.pack(side=tk.LEFT, padx=(0, 5), fill=tk.X, expand=True)
 
         # Label Contagem Elegíveis/Restantes
-        self._remaining_count_label = ttkb.Label(
+        self._remaining_count_label = ttk.Label(
             counters_frame,
             # Texto inicial, será atualizado por update_counters()
             text=UI_TEXTS.get("remaining_count_label", "Elegíveis: {eligible_count} / Restantes: {remaining_count}").format(
@@ -1004,7 +1003,7 @@ class StatusRegisteredPanel(ttkb.Frame):
 
     def _create_registered_table(self):
         """ Cria a tabela (SimpleTreeView) para exibir os alunos registrados. """
-        reg_frame = ttkb.Labelframe(
+        reg_frame = ttk.Labelframe(
             self,
             # Usa UI_TEXTS para o título do frame
             text=UI_TEXTS.get("registered_students_label", "✅ Alunos Registrados (Clique ❌ para Remover)"),
@@ -1209,15 +1208,15 @@ class RegistrationApp(tk.Tk):
             return
 
         # --- Inicialização dos Atributos da UI ---
-        self._top_bar: Optional[ttkb.Frame] = None
-        self._main_paned_window: Optional[ttkb.PanedWindow] = None
-        self._status_bar: Optional[ttkb.Frame] = None
+        self._top_bar: Optional[ttk.Frame] = None
+        self._main_paned_window: Optional[ttk.PanedWindow] = None
+        self._status_bar: Optional[ttk.Frame] = None
         self._action_panel: Optional[ActionSearchPanel] = None
         self._status_panel: Optional[StatusRegisteredPanel] = None
-        self._session_info_label: Optional[ttkb.Label] = None
-        self._status_bar_label: Optional[ttkb.Label] = None
-        self._progress_bar: Optional[ttkb.Progressbar] = None
-        self.style: Optional[ttkb.Style] = None
+        self._session_info_label: Optional[ttk.Label] = None
+        self._status_bar_label: Optional[ttk.Label] = None
+        self._progress_bar: Optional[ttk.Progressbar] = None
+        self.style: Optional[ttk.Style] = None
         self.colors: Optional[Any] = None
 
         # --- Construção da UI ---
@@ -1255,7 +1254,7 @@ class RegistrationApp(tk.Tk):
     def _configure_style(self):
         """ Configura o tema ttkbootstrap e estilos customizados. """
         try:
-            self.style = ttkb.Style(theme="litera")
+            self.style = ttk.Style(theme="litera")
             default_font = ("Helvetica", 10)
             heading_font = ("Helvetica", 10, "bold")
             label_font = ("Helvetica", 11, "bold")
@@ -1270,7 +1269,7 @@ class RegistrationApp(tk.Tk):
             self.colors = self.style.colors
         except (TclError, AttributeError) as e:
             logger.warning("Erro na configuração de estilo: %s. Usando padrões Tk.", e)
-            self.colors = ttkb.Style().colors if hasattr(ttkb, 'Style') else {}
+            self.colors = ttk.Style().colors if hasattr(ttk, 'Style') else {}
 
     def _configure_grid_layout(self):
         """ Configura o grid da janela principal (Tk). """
@@ -1281,16 +1280,16 @@ class RegistrationApp(tk.Tk):
 
     def _create_top_bar(self):
         """ Cria a barra superior com informações da sessão e botões globais. """
-        self._top_bar = ttkb.Frame(self, padding=(10, 5), bootstyle=LIGHT)
+        self._top_bar = ttk.Frame(self, padding=(10, 5), bootstyle=LIGHT)
         self._top_bar.grid(row=0, column=0, sticky="ew")
 
-        self._session_info_label = ttkb.Label(
+        self._session_info_label = ttk.Label(
             self._top_bar, text=UI_TEXTS.get("loading_session", "Carregando Sessão..."),
             font="-size 14 -weight bold"
         )
         self._session_info_label.pack(side=LEFT, padx=(0, 20))
 
-        buttons_frame = ttkb.Frame(self._top_bar, bootstyle=LIGHT)
+        buttons_frame = ttk.Frame(self._top_bar, bootstyle=LIGHT)
         buttons_frame.pack(side=RIGHT)
 
         ttk.Button(
@@ -1305,7 +1304,7 @@ class RegistrationApp(tk.Tk):
             buttons_frame, text=UI_TEXTS.get("sync_master_button", "🔄 Sync Cadastros"),
             command=self._sync_master_data, bootstyle="warning-outline", width=15
         ).pack(side=RIGHT, padx=3)
-        ttkb.Separator(buttons_frame, orient=VERTICAL).pack(side=RIGHT, padx=8, fill="y", pady=3)
+        ttk.Separator(buttons_frame, orient=VERTICAL).pack(side=RIGHT, padx=8, fill="y", pady=3)
         ttk.Button(
             buttons_frame, text=UI_TEXTS.get("filter_classes_button", "📊 Filtrar Turmas"),
             command=self._open_class_filter_dialog, bootstyle="info-outline", width=15
@@ -1317,7 +1316,7 @@ class RegistrationApp(tk.Tk):
 
     def _create_main_panels(self):
         """ Cria o PanedWindow e instancia os painéis ActionSearchPanel e StatusRegisteredPanel. """
-        self._main_paned_window = ttkb.PanedWindow(self, orient=HORIZONTAL, bootstyle="light")
+        self._main_paned_window = ttk.PanedWindow(self, orient=HORIZONTAL, bootstyle="light")
         self._main_paned_window.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 5))
 
         # Instancia o painel esquerdo
@@ -1330,15 +1329,15 @@ class RegistrationApp(tk.Tk):
 
     def _create_status_bar(self):
         """ Cria a barra de status inferior. """
-        self._status_bar = ttkb.Frame(self, padding=(5, 3), bootstyle=LIGHT, name="statusBarFrame")
+        self._status_bar = ttk.Frame(self, padding=(5, 3), bootstyle=LIGHT, name="statusBarFrame")
         self._status_bar.grid(row=2, column=0, sticky="ew")
 
-        self._status_bar_label = ttkb.Label(
+        self._status_bar_label = ttk.Label(
             self._status_bar, text=UI_TEXTS.get("status_ready", "Pronto."), style="Status.TLabel"
         )
         self._status_bar_label.pack(side=LEFT, padx=5)
 
-        self._progress_bar = ttkb.Progressbar(
+        self._progress_bar = ttk.Progressbar(
             self._status_bar, mode="indeterminate", bootstyle="striped-info", length=200
         )
         # Barra de progresso é adicionada/removida dinamicamente via show_progress_bar
@@ -1758,7 +1757,6 @@ def main():
     log_fmt = "%(asctime)s - %(levelname)-8s - %(name)-25s - %(message)s"
     log_datefmt = "%Y-%m-%d %H:%M:%S"
     try:
-        from logging.handlers import RotatingFileHandler
         file_h = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
         stream_h = logging.StreamHandler(sys.stdout)
         logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=log_datefmt, handlers=[file_h, stream_h])
@@ -1771,11 +1769,11 @@ def main():
 
     if platform.system() == "Windows":
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            ctypes.windll.shcore.SetProcessDpiAwareness(1) # type: ignore
             logger.info(UI_TEXTS.get("log_dpi_set_shcore", "..."))
         except AttributeError:
             try:
-                ctypes.windll.user32.SetProcessDPIAware()
+                ctypes.windll.user32.SetProcessDPIAware() # type: ignore
                 logger.info(UI_TEXTS.get("log_dpi_set_user32", "..."))
             except AttributeError:
                 logger.warning(UI_TEXTS.get("log_dpi_set_warn", "..."))

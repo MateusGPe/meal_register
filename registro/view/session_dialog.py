@@ -35,8 +35,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # --- Funções Auxiliares de Criação de Widgets ---
-
-
 def create_class_checkbox_section(master: tk.Widget, available_classes: List[str]
                                   ) -> tuple[List[Tuple[str, tk.BooleanVar, ttk.Checkbutton]], ttk.Labelframe]:
     """

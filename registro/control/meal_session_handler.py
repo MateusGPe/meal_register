@@ -11,19 +11,21 @@ e consulta de dados relacionados à sessão ativa.
 """
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Importações SQLAlchemy
-from sqlalchemy import delete, func, case, or_ as sql_or
-from sqlalchemy.orm import aliased, Session as SQLASession
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert  # Específico para SQLite on_conflict_do_nothing
+from sqlalchemy import case, delete, func
+from sqlalchemy import or_ as sql_or
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as SQLASession
+from sqlalchemy.orm import aliased
 
 # Importações locais
 from registro.control.constants import UI_TEXTS
 from registro.control.generic_crud import CRUD
-from registro.control.utils import to_code  # Assumindo utils.py refatorado
-from registro.model.tables import Consumption, Group, Reserve, Student  # Assumindo models.py existe
+from registro.control.utils import to_code
+from registro.model.tables import Consumption, Group, Reserve, Student
 
 logger = logging.getLogger(__name__)
 

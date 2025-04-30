@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------------
 # File: registro/control/generic_crud.py (CRUD Genérico Refinado)
 # ----------------------------------------------------------------------------
@@ -8,20 +7,22 @@
 Fornece uma classe genérica para operações CRUD (Create, Read, Update, Delete)
 em modelos SQLAlchemy, incluindo operações em lote e importação de CSV.
 """
-import csv
 import logging
 from pathlib import Path
 from typing import (Any, Callable, Dict, Generic, List, Optional, Self, Type,
                     TypeVar, Union)
-from sqlalchemy import insert, select, update as sql_update, delete as sql_delete
-from sqlalchemy.orm import Session as DBSession, declarative_base, attributes
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from registro.control.utils import load_csv_as_dict  # Assumindo que utils.py foi refatorado
+
+from sqlalchemy import insert, select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import Session as DBSession
+from sqlalchemy.orm import declarative_base
+
+from registro.control.utils import load_csv_as_dict
 
 logger = logging.getLogger(__name__)
 
 # Tipo genérico para o modelo SQLAlchemy
-Base = Type[type(declarative_base())]
+Base = Type[declarative_base()]
 MODEL = TypeVar('MODEL', bound=Base)
 
 
@@ -31,7 +32,7 @@ class CRUD(Generic[MODEL]):
     modelo SQLAlchemy específico.
     """
 
-    def __init__(self: Self, session: DBSession, model: MODEL):
+    def __init__(self: Self, session: DBSession, model: Type[MODEL]):
         """
         Inicializa o objeto CRUD.
 
