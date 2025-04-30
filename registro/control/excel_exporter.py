@@ -44,10 +44,10 @@ def _sanitize_filename_part(part: str) -> str:
     Returns:
         A string sanitizada e truncada.
     """
+    # Substitui ':' por '.' (comum em horas)
+    part = part.replace(':', '.').replace('/', '-')
     # Remove caracteres inválidos em nomes de arquivo Windows/Linux comuns
     part = re.sub(r'[\\/*?:"<>|\[\]]', '', part)
-    # Substitui ':' por '.' (comum em horas)
-    part = part.replace(':', '.')
     # Trunca para evitar nomes excessivamente longos (limite comum em alguns sistemas)
     return part[:30]
 
@@ -76,31 +76,32 @@ def export_to_excel(
     """
     # Validação inicial dos dados
     if not served_meals_data:
-        logger.warning("Nenhum dado de refeição servida fornecido para exportação Excel. Pulando.")
+        logger.warning(
+            "Nenhum dado de refeição servida fornecido para exportação Excel. Pulando.")
         return None
     if not all([meal_type, session_date, session_time]):
         logger.error("Metadados da sessão insuficientes (tipo, data, hora)"
                      " fornecidos para exportação Excel.")
         return None
 
-    output_path: Optional[Path] = None  # Caminho do arquivo a ser criado
+    output_path: Optional[str] = None  # Caminho do arquivo a ser criado
     workbook: Optional[xlsxwriter.Workbook] = None  # Objeto Workbook
 
     try:
         # --- Preparação do Nome do Arquivo e Caminho ---
         safe_meal_type = _sanitize_filename_part(meal_type)
-        safe_date = session_date  # YYYY-MM-DD já é seguro para nome de arquivo
-        safe_time = _sanitize_filename_part(session_time)  # Transforma HH:MM em HH.MM
+        safe_date = _sanitize_filename_part(session_date)
+        safe_time = _sanitize_filename_part(
+            session_time)  # Transforma HH:MM em HH.MM
 
         # Monta o nome base do arquivo
         filename_base = f"{safe_meal_type} {safe_date} {safe_time}.xlsx"
 
         # Obtém o caminho para a pasta 'Documentos'
         docs_path_str = get_documents_path()
-        docs_path = Path(docs_path_str)
 
         # Define o caminho completo do arquivo de saída
-        output_path = docs_path / filename_base
+        output_path = os.path.join(docs_path_str, filename_base)
 
         # --- Criação e Escrita do Arquivo Excel ---
         logger.info("Iniciando exportação Excel para: %s", output_path)
@@ -109,7 +110,7 @@ def export_to_excel(
         workbook = xlsxwriter.Workbook(output_path, {'constant_memory': True})
 
         # Cria a aba (worksheet) - nome também sanitizado
-        worksheet_name = _sanitize_filename_part(f"{safe_meal_type}_{safe_date}_{safe_time}")
+        worksheet_name = f"{safe_meal_type} {safe_date} {safe_time}"
         worksheet = workbook.add_worksheet(worksheet_name)
 
         # --- Formatação ---
@@ -140,24 +141,23 @@ def export_to_excel(
             )
             worksheet.write_row(row_idx, 0, data_row, cell_format)
             row_idx += 1
-
         # --- Ajuste de Largura das Colunas ---
         # Ajusta a largura das colunas para melhor visualização
         worksheet.set_column(0, 0, 12)  # Matrícula
         worksheet.set_column(1, 1, 12)  # Data
         worksheet.set_column(2, 2, 40)  # Nome
-        worksheet.set_column(3, 3, 25)  # Turma
-        worksheet.set_column(4, 4, 30)  # Refeição/Prato
+        worksheet.set_column(3, 3, 40)  # Turma
+        worksheet.set_column(4, 4, 40)  # Refeição/Prato
         worksheet.set_column(5, 5, 10)  # Hora
 
-        # O workbook é salvo automaticamente ao sair do bloco 'with'
-
-        logger.info("Dados de refeições servidas exportados com sucesso para %s", output_path)
+        logger.info(
+            "Dados de refeições servidas exportados com sucesso para %s", output_path)
         return output_path
 
     # Tratamento de erros específicos de I/O e XlsxWriter
     except (IOError, OSError, XlsxWriterException) as e:
-        logger.exception("Erro de I/O ou XlsxWriter durante exportação Excel: %s", e)
+        logger.exception(
+            "Erro de I/O ou XlsxWriter durante exportação Excel: %s", e)
         # Tenta remover arquivo parcial se ele foi criado
         if output_path and output_path.exists():
             try:
@@ -182,10 +182,9 @@ def export_to_excel(
     finally:
         # Garante que o workbook seja fechado mesmo se ocorrerem exceções
         # dentro do bloco 'with' (embora o 'with' já faça isso).
-        # Isso é mais relevante se não estivéssemos usando 'with'.
         if workbook:
             try:
-                # workbook.close() # Com 'with', isso é chamado automaticamente
+                workbook.close()
                 pass
             except Exception as close_err:
                 logger.error(

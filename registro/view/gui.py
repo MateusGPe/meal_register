@@ -1045,9 +1045,9 @@ class StatusRegisteredPanel(ttk.Frame):
             text=UI_TEXTS.get("registered_count_label",
                               "Registrados: {count}").format(count="-"),
             bootstyle="inverse-primary",  # Estilo visual
-            font= ("Helvetica", 10, "bold"),
+            font=("Helvetica", 10, "bold"),
             padding=5,
-            #style="Count.TLabel",  # Usa estilo customizado
+            # style="Count.TLabel",  # Usa estilo customizado
             anchor=CENTER
         )
         self._registered_count_label.pack(
@@ -1060,9 +1060,9 @@ class StatusRegisteredPanel(ttk.Frame):
             text=UI_TEXTS.get("remaining_count_label", "Elegíveis: {eligible_count} / Restantes: {remaining_count}").format(
                 eligible_count="-", remaining_count="-"),
             bootstyle="inverse-success",  # Estilo visual
-            font= ("Helvetica", 10, "bold"),
+            font=("Helvetica", 10, "bold"),
             padding=5,
-            #style="Count.TLabel",  # Usa estilo customizado
+            # style="Count.TLabel",  # Usa estilo customizado
             anchor=CENTER
         )
         self._remaining_count_label.pack(
@@ -1288,6 +1288,7 @@ class RegistrationApp(tk.Tk):
         super().__init__()
         self.title(title)
         self.protocol("WM_DELETE_WINDOW", self.on_close_app)  # Ação ao fechar
+        self.minsize(768, 432)  # Tamanho inicial da janela
 
         # --- Inicialização do Controlador ---
         self._session_manager: Optional[SessionManager] = None
@@ -1359,7 +1360,8 @@ class RegistrationApp(tk.Tk):
             self.style.configure("Status.TLabel", font=small_font)
             self.style.configure("Feedback.TLabel", font=small_font)
             self.style.configure("Preview.TLabel", font=small_font)
-            self.style.configure("Count.TLabel", font=heading_font, bootstyle=PRIMARY)
+            self.style.configure(
+                "Count.TLabel", font=heading_font, bootstyle=PRIMARY)
             self.colors = self.style.colors
         except (TclError, AttributeError) as e:
             logger.warning(
@@ -1504,7 +1506,7 @@ class RegistrationApp(tk.Tk):
                 date_ui = new_session_data['data']
                 print(f"Data recebida do diálogo: {date_ui}")
                 new_session_data['data'] = datetime.strptime(
-                    date_ui, '%Y-%m-%d').strftime('%d/%m/%Y') # '%Y-%m-%d'
+                    date_ui, '%Y-%m-%d').strftime('%d/%m/%Y')  # '%Y-%m-%d'
             except (ValueError, KeyError) as e:
                 logger.error(
                     f"Erro ao processar data da nova sessão: {e}. Dados: {result}")
