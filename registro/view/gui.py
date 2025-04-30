@@ -446,7 +446,7 @@ class ActionSearchPanel(ttk.Frame):
             self, text=UI_TEXTS.get("eligible_students_label", "🔍 Alunos Elegíveis (Resultados da Busca)"), padding=(5, 5)
         )
         # Posiciona abaixo da busca
-        eligible_frame.grid(row=1, column=0, sticky="nsew", pady=(10, 10))
+        eligible_frame.grid(row=2, column=0, sticky="nsew", pady=(10, 10))
         eligible_frame.grid_rowconfigure(0, weight=1)  # Treeview expande
         eligible_frame.grid_columnconfigure(0, weight=1)
 
@@ -468,14 +468,14 @@ class ActionSearchPanel(ttk.Frame):
         """ Cria a área para exibir informações do aluno selecionado. """
         preview_frame = ttk.Frame(self, padding=(0, 5))
         # Posiciona abaixo da lista de elegíveis
-        preview_frame.grid(row=2, column=0, sticky="ew", pady=(5, 5))
+        preview_frame.grid(row=3, column=0, sticky="ew", pady=(5, 5))
         # Label para o preview
         self._selected_student_label = ttk.Label(
             preview_frame,
             text=UI_TEXTS.get("select_student_preview", "Selecione um aluno da lista."),
             justify=LEFT,
             style="Preview.TLabel",  # Usa estilo customizado
-            wraplength=350  # Quebra linha para nomes/turmas longas
+            wraplength=350,  # Quebra linha para nomes/turmas longas
         )
         self._selected_student_label.pack(fill=X, expand=True)
 
@@ -483,24 +483,24 @@ class ActionSearchPanel(ttk.Frame):
         """ Cria a área com o botão de registrar e o label de feedback. """
         action_frame = ttk.Frame(self)
         # Posiciona abaixo do preview
-        action_frame.grid(row=3, column=0, sticky="ew", pady=(5, 0))
+        action_frame.grid(row=1, column=0, sticky="ew", pady=(5, 0))
         action_frame.columnconfigure(0, weight=1)  # Botão expande
 
         # Botão de Registrar
         self._register_button = ttk.Button(
             action_frame,
-            text=UI_TEXTS.get("register_selected_button", "➕ Registrar Selecionado"),
+            text=UI_TEXTS.get("register_selected_button", "..."),
             command=self._register_selected_eligible,  # Chama método local
             bootstyle="success",
             state=DISABLED,  # Começa desabilitado
         )
-        self._register_button.pack(side=LEFT, fill=X, expand=True, padx=(0, 10))
+        self._register_button.pack(side=RIGHT, fill=X, expand=True, padx=(0, 10))
 
         # Label para feedback da última ação (registro, erro, etc.)
         self._action_feedback_label = ttk.Label(
-            action_frame, text="", width=35, anchor=E, style="Feedback.TLabel"  # Alinha à direita
+            action_frame, text="", width=35, anchor=W, style="Feedback.TLabel"  # Alinha à direita
         )
-        self._action_feedback_label.pack(side=RIGHT)
+        self._action_feedback_label.pack(side=LEFT)
 
     # --- Métodos Públicos (Controle Externo) ---
 
