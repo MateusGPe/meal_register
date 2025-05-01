@@ -57,7 +57,7 @@ def export_to_excel(
     meal_type: str,
     session_date: str,  # Formato YYYY-MM-DD
     session_time: str,  # Formato HH.MM (após sanitização) ou HH:MM
-) -> Optional[Path]:
+) -> Optional[str]:
     """
     Exporta uma sequência de registros de refeições servidas para um arquivo Excel.
 
@@ -159,7 +159,7 @@ def export_to_excel(
         logger.exception(
             "Erro de I/O ou XlsxWriter durante exportação Excel: %s", e)
         # Tenta remover arquivo parcial se ele foi criado
-        if output_path and output_path.exists():
+        if output_path and Path(output_path).exists():
             try:
                 os.remove(output_path)
                 logger.info("Arquivo parcial removido: %s", output_path)
@@ -171,7 +171,7 @@ def export_to_excel(
     except Exception as e:
         logger.exception("Erro inesperado durante exportação Excel: %s", e)
         # Tenta remover arquivo parcial
-        if output_path and output_path.exists():
+        if output_path and Path(output_path).exists():
             try:
                 os.remove(output_path)
                 logger.info("Arquivo parcial removido: %s", output_path)
@@ -185,7 +185,6 @@ def export_to_excel(
         if workbook:
             try:
                 workbook.close()
-                pass
             except Exception as close_err:
                 logger.error(
                     "Erro adicional ao fechar workbook (pode já estar fechado): %s", close_err)

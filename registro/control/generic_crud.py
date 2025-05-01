@@ -9,7 +9,7 @@ em modelos SQLAlchemy, incluindo operações em lote e importação de CSV.
 """
 import logging
 from pathlib import Path
-from typing import (Any, Callable, Dict, Generic, List, Optional, Self, Type,
+from typing import (Any, Callable, Dict, Generic, List, Optional, Self, Sequence, Type,
                     TypeVar, Union)
 
 from sqlalchemy import insert, select
@@ -58,7 +58,7 @@ class CRUD(Generic[MODEL]):
 
         try:
             # Obtém o mapper do modelo para introspecção
-            mapper = model.__mapper__
+            mapper = self._model.__mapper__  # type: ignore
             # Verifica se há uma chave primária definida
             if not mapper.primary_key:
                 raise ValueError(f"O modelo {model.__name__}"
@@ -74,7 +74,8 @@ class CRUD(Generic[MODEL]):
             raise ValueError("Não foi possível identificar a chave"
                              f" primária para o modelo {model.__name__}.") from e
 
-    def _handle_db_error(self: Self, operation: str, error: SQLAlchemyError | TypeError,
+    def _handle_db_error(self: Self, operation: str,
+                         error: SQLAlchemyError | AttributeError | TypeError,
                          item_info: Any = None) -> None:
         """
         Trata e loga erros do SQLAlchemy, realizando rollback da sessão.
@@ -121,7 +122,7 @@ class CRUD(Generic[MODEL]):
         """
         try:
             # Cria a instância do modelo com os dados fornecidos
-            db_item = self._model(**data)
+            db_item = self._model(**data)  # type: ignore
             self._db_session.add(db_item)
             self._db_session.commit()
             # Atualiza o objeto com dados do DB (ex: ID gerado)
@@ -175,7 +176,8 @@ class CRUD(Generic[MODEL]):
             for key, value in filters.items():
                 # Verifica se o atributo existe no modelo antes de filtrar
                 if not hasattr(self._model, key):
-                    raise AttributeError(f"Modelo {self._model.__name__} não possui o atributo '{key}' para filtro.")
+                    raise AttributeError(
+                        f"Modelo {self._model.__name__} não possui o atributo '{key}' para filtro.")
                 stmt = stmt.where(getattr(self._model, key) == value)
 
             # Limita a 1 resultado e busca o primeiro
@@ -197,7 +199,7 @@ class CRUD(Generic[MODEL]):
             self._handle_db_error("read_filtered_one", e, filters)
             return None
 
-    def read_filtered(self: Self, **filters: Any) -> List[MODEL]:
+    def read_filtered(self: Self, **filters: Any) -> Sequence[MODEL]:
         """
         Lê todos os registros que correspondem aos filtros fornecidos.
         Suporta filtros especiais como `skip`, `limit`, e `field__in=[...]`.
@@ -207,7 +209,8 @@ class CRUD(Generic[MODEL]):
                        Filtros especiais:
                        - `skip`: (int) Número de registros a pular (offset).
                        - `limit`: (int) Número máximo de registros a retornar.
-                       - `nome_do_campo__in`: (List | Set) Filtra onde o campo está na lista/conjunto.
+                       - `nome_do_campo__in`: (List | Set) Filtra onde o
+                            campo está na lista/conjunto.
 
         Returns:
             Uma lista de objetos do modelo encontrados, ou uma lista vazia se
@@ -226,14 +229,16 @@ class CRUD(Generic[MODEL]):
                     # **CORREÇÃO**: Verifica se a chave REAL (sem o sufixo) existe no modelo
                     if not hasattr(self._model, actual_key):
                         raise AttributeError(
-                            f"Modelo {self._model.__name__} não possui o atributo '{actual_key}' para filtro '__in'.")
+                            f"Modelo {self._model.__name__} não possui o atributo "
+                            f"'{actual_key}' para filtro '__in'.")
                     # Aplica o filtro 'IN'
                     stmt = stmt.where(getattr(self._model, actual_key).in_(value))
                 else:
                     # Filtro de igualdade normal
                     if not hasattr(self._model, key):
                         raise AttributeError(
-                            f"Modelo {self._model.__name__} não possui o atributo '{key}' para filtro.")
+                            f"Modelo {self._model.__name__} não possui o atributo"
+                            f" '{key}' para filtro.")
                     stmt = stmt.where(getattr(self._model, key) == value)
 
             # Aplica paginação (offset e limit)
@@ -245,16 +250,17 @@ class CRUD(Generic[MODEL]):
             # Executa a query e retorna todos os resultados
             results = self._db_session.scalars(stmt).all()
             logger.debug(
-                f"{len(results)} registros encontrados para {self._model.__name__} com filtros: {filters}, skip={skip}, limit={limit}")
+                "%s registros encontrados para %s com filtros: %s, skip=%s, limit=%s",
+                len(results), self._model.__name__, filters, skip, limit)
             return results  # Retorna lista vazia se não houver resultados
         except AttributeError as e:
-            logger.error(f"Atributo de filtro inválido para {self._model.__name__}: {e}")
+            logger.error("Atributo de filtro inválido para %s: %s", self._model.__name__, e)
             return []
         except SQLAlchemyError as e:
             self._handle_db_error("read_filtered", e, filters)
             return []
 
-    def read_all(self: Self) -> List[MODEL]:
+    def read_all(self: Self) -> Sequence[MODEL]:
         """
         Lê todos os registros da tabela associada ao modelo.
 
@@ -265,13 +271,14 @@ class CRUD(Generic[MODEL]):
         try:
             stmt = select(self._model)
             results = self._db_session.scalars(stmt).all()
-            logger.debug(f"{len(results)} registros totais encontrados para {self._model.__name__} (read_all)")
+            logger.debug("%s registros totais encontrados para %s (read_all)",
+                         len(results), self._model.__name__)
             return results
         except SQLAlchemyError as e:
             self._handle_db_error("read_all", e)
             return []
 
-    def read_all_ordered_by(self: Self, *order_by_columns: Any) -> List[MODEL]:
+    def read_all_ordered_by(self: Self, *order_by_columns: Any) -> Sequence[MODEL]:
         """
         Lê todos os registros da tabela, ordenados pelas colunas especificadas.
 
@@ -287,7 +294,8 @@ class CRUD(Generic[MODEL]):
             # Cria a query com ordenação
             stmt = select(self._model).order_by(*order_by_columns)
             results = self._db_session.scalars(stmt).all()
-            logger.debug(f"{len(results)} registros ordenados encontrados para {self._model.__name__}")
+            logger.debug("%s registros ordenados encontrados para %s",
+                         len(results), self._model.__name__)
             return results
         except (SQLAlchemyError, AttributeError) as e:  # AttributeError se coluna inválida
             self._handle_db_error("read_all_ordered_by", e, order_by_columns)
@@ -309,7 +317,8 @@ class CRUD(Generic[MODEL]):
             # Busca o item pelo ID
             item_to_update = self._db_session.get(self._model, item_id)
             if item_to_update:
-                logger.debug(f"Tentando atualizar registro {self._model.__name__} PK {item_id} com dados: {data}")
+                logger.debug("Tentando atualizar registro %s PK %s com dados: %s",
+                             self._model.__name__, item_id, data)
                 # Itera sobre os dados a serem atualizados
                 for key, value in data.items():
                     # Verifica se o atributo existe antes de tentar setar
@@ -317,15 +326,19 @@ class CRUD(Generic[MODEL]):
                         setattr(item_to_update, key, value)
                     else:
                         logger.warning(
-                            f"Tentativa de atualizar atributo inexistente '{key}' em {self._model.__name__} PK {item_id}. Ignorado.")
+                            "Tentativa de atualizar atributo inexistente '%s'"
+                            " em %s PK %s. Ignorado.",
+                            key, self._model.__name__, item_id)
                 # Persiste as alterações
                 self._db_session.commit()
                 # Atualiza o objeto com dados do DB (se houver triggers, etc.)
                 self._db_session.refresh(item_to_update)
-                logger.info(f"Registro {self._model.__name__} PK {item_id} atualizado com sucesso.")
+                logger.info("Registro %s PK %s atualizado com sucesso.",
+                            self._model.__name__, item_id)
                 return item_to_update
             else:
-                logger.warning(f"Registro {self._model.__name__} PK {item_id} não encontrado para atualização.")
+                logger.warning("Registro %s PK %s não encontrado para atualização.",
+                               self._model.__name__, item_id)
                 return None
         except (SQLAlchemyError, TypeError) as e:
             self._handle_db_error("update", e, f"PK={item_id}, data={data}")
@@ -348,16 +361,19 @@ class CRUD(Generic[MODEL]):
             if item_to_delete:
                 self._db_session.delete(item_to_delete)
                 self._db_session.commit()
-                logger.info(f"Registro {self._model.__name__} PK {item_id} deletado com sucesso.")
+                logger.info("Registro %s PK %s deletado com sucesso.",
+                            self._model.__name__, item_id)
                 return True
             else:
-                logger.warning(f"Registro {self._model.__name__} PK {item_id} não encontrado para deleção.")
+                logger.warning("Registro %s PK %s não encontrado para deleção.",
+                               self._model.__name__, item_id)
                 return False
         except SQLAlchemyError as e:
             # Log específico para erros de integridade (ex: FK constraint)
             if isinstance(e, IntegrityError):
                 logger.error(
-                    f"Erro de integridade ao deletar {self._model.__name__} PK {item_id} (provável FK constraint): {e}")
+                    "Erro de integridade ao deletar %s PK %s (provável FK constraint): %s",
+                    self._model.__name__, item_id, e)
             # Chama o handler geral de erro
             self._handle_db_error("delete", e, f"PK={item_id}")
             return False
@@ -382,13 +398,16 @@ class CRUD(Generic[MODEL]):
             # Usa a sintaxe core do SQLAlchemy para bulk insert
             self._db_session.execute(insert(self._model), rows_data)
             self._db_session.commit()
-            logger.info(f"{len(rows_data)} registros criados em lote para {self._model.__name__}.")
+            logger.info("%s registros criados em lote para %s.",
+                        len(rows_data), self._model.__name__)
             return True
         except (SQLAlchemyError, TypeError) as e:
             # Log específico para erro de integridade (chave duplicada é comum aqui)
             if isinstance(e, IntegrityError):
                 logger.error(
-                    f"Erro de integridade durante bulk create para {self._model.__name__} (provável chave duplicada): {e}")
+                    "Erro de integridade durante bulk create para %s"
+                    " (provável chave duplicada): %s",
+                    self._model.__name__, e)
             self._handle_db_error("bulk_create", e, f"{len(rows_data)} linhas")
             return False
 
@@ -422,7 +441,8 @@ class CRUD(Generic[MODEL]):
                 # Obtém o ID do item a partir do dicionário
                 item_id = row_update_data.get(pk_name)
                 if item_id is None:
-                    logger.warning(f"bulk_update: pulando linha sem chave primária '{pk_name}': {row_update_data}")
+                    logger.warning("bulk_update: pulando linha sem chave primária '%s': %s",
+                                   pk_name, row_update_data)
                     skipped_missing_pk += 1
                     continue
 
@@ -431,7 +451,7 @@ class CRUD(Generic[MODEL]):
                 item_to_update = self._db_session.get(self._model, item_id)
 
                 if item_to_update:
-                    logger.debug(f"bulk_update: atualizando {self._model.__name__} PK {item_id}")
+                    logger.debug("bulk_update: atualizando %s PK %s", self._model.__name__, item_id)
                     # Aplica as atualizações contidas no dicionário
                     for key, value in row_update_data.items():
                         if key == pk_name:  # Não tenta atualizar a própria PK
@@ -440,27 +460,34 @@ class CRUD(Generic[MODEL]):
                             setattr(item_to_update, key, value)
                         else:
                             logger.warning(
-                                f"bulk_update: atributo '{key}' não encontrado em {self._model.__name__} PK {item_id}. Ignorado.")
+                                "bulk_update: atributo '%s' não encontrado em %s PK %s. Ignorado.",
+                                key, self._model.__name__, item_id)
                     updated_count += 1
                 else:
                     # Loga se o item com o ID fornecido não foi encontrado
                     logger.warning(
-                        f"bulk_update: registro {self._model.__name__} PK {item_id} não encontrado para atualização.")
+                        "bulk_update: registro %s PK %s não encontrado para atualização.",
+                        self._model.__name__, item_id)
                     skipped_not_found += 1
 
             # Commita todas as alterações feitas na sessão
             self._db_session.commit()
-            logger.info(f"bulk_update para {self._model.__name__} finalizado. Atualizados: {updated_count}, "
-                        f"Pulados (Sem PK): {skipped_missing_pk}, Pulados (Não encontrados): {skipped_not_found}")
+            logger.info("bulk_update para %s finalizado. Atualizados: %s, "
+                        "Pulados (Sem PK): %s, Pulados (Não encontrados): %s",
+                        self._model.__name__, updated_count,
+                        skipped_missing_pk, skipped_not_found)
             return True  # Retorna True mesmo que alguns itens não tenham sido encontrados
         except (SQLAlchemyError, TypeError, AttributeError) as e:
-            # AttributeError pode ocorrer se tentarmos setar um atributo inexistente e a checagem falhar
+            # AttributeError pode ocorrer se tentarmos setar um atributo inexistente e a
+            # checagem falhar
             self._handle_db_error("bulk_update", e, f"{len(rows_data)} linhas tentadas")
             return False
 
-    def import_csv(self: Self, csv_file_path: Union[str, Path],
-                   row_processor: Callable[[Dict[str, str]], Optional[Dict[str, Any]]] = lambda row: row,
-                   adjust_keys_func: Optional[Callable[[Dict], Dict]] = None) -> bool:
+    def import_csv(
+            self: Self, csv_file_path: Union[str, Path],
+            row_processor: Callable[[Dict[str, str]], Optional[Dict[str, Any]]] =
+            lambda row: row,
+            adjust_keys_func: Optional[Callable[[Dict], Dict]] = None) -> bool:
         """
         Importa dados de um arquivo CSV para o banco de dados usando `bulk_create`.
 
@@ -479,14 +506,15 @@ class CRUD(Generic[MODEL]):
             inserção no banco de dados.
         """
         csv_path_str = str(csv_file_path)
-        logger.info(f"Iniciando importação CSV: {csv_path_str} para {self._model.__name__}")
+        logger.info("Iniciando importação CSV: %s para %s", csv_path_str, self._model.__name__)
         try:
             # Carrega o CSV como lista de dicionários
             raw_rows = load_csv_as_dict(csv_path_str)
             if raw_rows is None:  # Erro ao carregar o arquivo
                 return False
             if not raw_rows:
-                logger.info(f"Arquivo CSV '{csv_path_str}' está vazio ou contém apenas cabeçalhos.")
+                logger.info("Arquivo CSV '%s' está vazio ou contém apenas cabeçalhos.",
+                            csv_path_str)
                 return True  # Considera sucesso se não há o que importar
 
             processed_rows: List[Dict[str, Any]] = []
@@ -503,30 +531,36 @@ class CRUD(Generic[MODEL]):
                         processed_rows.append(processed_row)
                     elif processed_row is not None:
                         # Loga aviso se o processador retornou algo inesperado (não None e não dict)
-                        logger.warning(f"Processador de linha retornou valor não-dict e não-None para linha CSV {i+1}. "
-                                       f"Pulando linha: {raw_row}")
+                        logger.warning("Processador de linha retornou valor não-dict e"
+                                       " não-None para linha CSV %s. Pulando linha: %s",
+                                       i+1, raw_row)
                 except Exception as proc_err:
                     # Loga erro se o processador de linha falhar
                     logger.error(
-                        f"Erro ao processar linha CSV {i+1} de '{csv_path_str}': {proc_err} | Linha: {raw_row}", exc_info=True)
+                        "Erro ao processar linha CSV %s de '%s': %s | Linha: %s", i+1,
+                        csv_path_str, proc_err, raw_row, exc_info=True)
 
             if not processed_rows:
-                logger.warning(f"Nenhuma linha válida para importar após processar CSV '{csv_path_str}'.")
+                logger.warning("Nenhuma linha válida para importar após processar CSV '%s'.",
+                               csv_path_str)
                 return True  # Sucesso se não há linhas válidas
 
             logger.info(
-                f"Tentando inserir em lote {len(processed_rows)} registros processados do CSV '{csv_path_str}'.")
+                "Tentando inserir em lote %s registros processados do CSV '%s'.",
+                len(processed_rows), csv_path_str)
             # Tenta a inserção em lote
             success = self.bulk_create(processed_rows)
             if success:
-                logger.info(f"Importação CSV '{csv_path_str}' concluída com sucesso.")
+                logger.info("Importação CSV '%s' concluída com sucesso.", csv_path_str)
             else:
                 # Erro já foi logado por bulk_create
                 logger.error(
-                    f"Falha no bulk create durante importação CSV de '{csv_path_str}'. Verifique logs anteriores.")
+                    "Falha no bulk create durante importação CSV de '%s'."
+                    " Verifique logs anteriores.",
+                    csv_path_str)
             return success
         except Exception as e:
-            logger.exception(f"Erro inesperado durante importação CSV '{csv_path_str}': {e}")
+            logger.exception("Erro inesperado durante importação CSV '%s': %s", csv_path_str, e)
             return False
 
     def get_session(self: Self) -> DBSession:
@@ -548,4 +582,4 @@ class CRUD(Generic[MODEL]):
             self._db_session.rollback()
             logger.info("Rollback da sessão DB realizado.")
         except Exception as e:
-            logger.error(f"Erro durante o rollback da sessão DB: {e}")
+            logger.error("Erro durante o rollback da sessão DB: %s", e)

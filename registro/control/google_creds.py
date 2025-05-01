@@ -16,6 +16,7 @@ from typing import Optional, Self
 
 from google.auth.exceptions import GoogleAuthError, RefreshError
 from google.auth.transport.requests import Request
+from google.auth.external_account_authorized_user import Credentials as ExternalCredentials
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
@@ -45,11 +46,12 @@ class GrantAccess:
             token_path: Caminho para o arquivo JSON onde o token de acesso/refresh
                         será armazenado.
         """
-        self._credentials: Optional[Credentials] = None
+        self._credentials: Optional[Credentials | ExternalCredentials] = None
         self._credentials_path: Path = Path(credentials_path)
         self._token_path: Path = Path(token_path)
         logger.debug(
-            f"GrantAccess inicializado. Credenciais: '{self._credentials_path}', Token: '{self._token_path}'")
+            "GrantAccess inicializado. Credenciais: '%s', Token: '%s'",
+            self._credentials_path, self._token_path)
 
     def _load_token(self) -> Optional[Credentials]:
         """
@@ -64,35 +66,40 @@ class GrantAccess:
             try:
                 # Carrega as credenciais do arquivo usando os escopos definidos
                 creds = Credentials.from_authorized_user_file(str(self._token_path), SCOPES)
-                logger.info(f"Token carregado com sucesso de '{self._token_path}'")
+                logger.info("Token carregado com sucesso de '%s'", self._token_path)
                 return creds
             except ValueError as ve:
-                logger.warning(f"Formato inválido no arquivo de token '{self._token_path}': {ve}. Tentando remover.")
+                logger.warning(
+                    "Formato inválido no arquivo de token '%s': %s. Tentando remover.",
+                    self._token_path, ve)
                 self._remove_token_file()
             except GoogleAuthError as ae:
                 logger.warning(
-                    f"Erro de autenticação ao carregar token de '{self._token_path}': {ae}. Tentando remover.")
+                    "Erro de autenticação ao carregar token de '%s': %s. Tentando remover.",
+                    self._token_path, ae)
                 self._remove_token_file()
             except Exception as e:
                 # Captura outros erros potenciais durante o carregamento
                 logger.warning(
-                    f"Falha ao carregar token de '{self._token_path}': {e}. "
-                    "Tentará iniciar novo fluxo de autorização se necessário.")
+                    "Falha ao carregar token de '%s': %s. "
+                    "Tentará iniciar novo fluxo de autorização se necessário.", self._token_path, e)
                 # Tenta remover o arquivo de token potencialmente inválido
                 self._remove_token_file()
         else:
-            logger.debug(f"Arquivo de token não encontrado em '{self._token_path}'.")
+            logger.debug("Arquivo de token não encontrado em '%s'.", self._token_path)
         return None
 
     def _remove_token_file(self) -> None:
         """ Tenta remover o arquivo de token. """
         try:
             self._token_path.unlink(missing_ok=True)  # Ignora erro se já não existir
-            logger.debug(f"Arquivo de token potencialmente inválido removido: '{self._token_path}'")
+            logger.debug("Arquivo de token potencialmente inválido removido: '%s'",
+                         self._token_path)
         except OSError as rm_err:
-            logger.error(f"Não foi possível remover o arquivo de token inválido '{self._token_path}': {rm_err}")
+            logger.error("Não foi possível remover o arquivo de token inválido '%s': '%s'",
+                         self._token_path, rm_err)
 
-    def _save_token(self, creds: Credentials) -> None:
+    def _save_token(self, creds: Credentials | ExternalCredentials) -> None:
         """
         Salva as credenciais (incluindo refresh token) no arquivo de token.
 
@@ -107,17 +114,20 @@ class GrantAccess:
             creds_dict = json.loads(creds.to_json())
             # Usa a função utilitária para salvar o JSON
             if save_json(str(self._token_path), creds_dict):
-                logger.info(f"Credenciais salvas com sucesso em '{self._token_path}'")
+                logger.info("Credenciais salvas com sucesso em '%s'",
+                            self._token_path)
             else:
                 # save_json já loga o erro específico
-                logger.error(f"Falha ao salvar credenciais usando save_json para '{self._token_path}'")
+                logger.error("Falha ao salvar credenciais usando save_json para '%s'",
+                             self._token_path)
         except json.JSONDecodeError as json_err:
             logger.error(
-                f"Erro ao serializar credenciais para JSON antes de salvar em '{self._token_path}': {json_err}")
+                "Erro ao serializar credenciais para JSON antes de salvar em '%s': %s",
+                self._token_path, json_err)
         except Exception as e:
-            logger.exception(f"Erro inesperado ao salvar token em '{self._token_path}': {e}")
+            logger.exception("Erro inesperado ao salvar token em '%s': %s", self._token_path, e)
 
-    def _run_auth_flow(self) -> Optional[Credentials]:
+    def _run_auth_flow(self) -> Optional[Credentials | ExternalCredentials]:
         """
         Inicia o fluxo de autorização OAuth2 interativo (abre o navegador).
 
@@ -132,7 +142,9 @@ class GrantAccess:
             # Verifica se o arquivo de credenciais da API existe
             if not self._credentials_path.exists():
                 logger.error(
-                    f"Arquivo de credenciais não encontrado: '{self._credentials_path}'. Não é possível iniciar autorização.")
+                    "Arquivo de credenciais não encontrado: '%s'."
+                    " Não é possível iniciar autorização.",
+                    self._credentials_path)
                 return None
 
             # Configura o fluxo a partir do arquivo de credenciais e escopos
@@ -146,9 +158,9 @@ class GrantAccess:
             return creds
         except FileNotFoundError:
             # Caso o arquivo desapareça entre a verificação e o uso
-            logger.error(f"Arquivo de credenciais desapareceu: '{self._credentials_path}'.")
+            logger.error("Arquivo de credenciais desapareceu: '%s'.", self._credentials_path)
         except Exception as e:
-            logger.exception(f"Erro durante o fluxo de autorização: {e}")
+            logger.exception("Erro durante o fluxo de autorização: %s", e)
         return None
 
     def refresh_or_obtain_credentials(self: Self) -> Self:
@@ -184,7 +196,8 @@ class GrantAccess:
                 self._save_token(creds)
             except RefreshError as e:
                 # Falha na atualização (refresh token inválido, revogado, etc.)
-                logger.error(f"Falha ao atualizar credenciais: {e}. Iniciando novo fluxo de autorização.")
+                logger.error("Falha ao atualizar credenciais: %s."
+                             " Iniciando novo fluxo de autorização.", e)
                 self._remove_token_file()  # Remove o token antigo/inválido
                 creds = self._run_auth_flow()  # Tenta obter novas credenciais
                 if creds:
@@ -195,7 +208,8 @@ class GrantAccess:
                     self._credentials = None
             except Exception as e:
                 # Outro erro durante a atualização
-                logger.exception(f"Erro inesperado durante atualização de credenciais: {e}. Iniciando novo fluxo.")
+                logger.exception("Erro inesperado durante atualização de credenciais: %s."
+                                 " Iniciando novo fluxo.", e)
                 self._remove_token_file()
                 creds = self._run_auth_flow()
                 if creds:
@@ -205,11 +219,14 @@ class GrantAccess:
                     logger.error("Falha ao obter novas credenciais.")
                     self._credentials = None
         else:
-            # Nenhuma credencial válida carregada (arquivo não existe, expirado sem refresh token, etc.)
+            # Nenhuma credencial válida carregada (arquivo não existe,
+            # expirado sem refresh token, etc.)
             if creds and not creds.refresh_token:
-                logger.info("Credenciais expiradas e sem refresh token disponível. Iniciando novo fluxo de autorização.")
+                logger.info("Credenciais expiradas e sem refresh token disponível."
+                            " Iniciando novo fluxo de autorização.")
             elif not creds:
-                logger.info("Nenhum token existente encontrado. Iniciando novo fluxo de autorização.")
+                logger.info("Nenhum token existente encontrado."
+                            " Iniciando novo fluxo de autorização.")
 
             # Inicia o fluxo interativo para obter novas credenciais
             creds = self._run_auth_flow()
@@ -219,9 +236,10 @@ class GrantAccess:
             else:
                 logger.error("Falha ao obter novas credenciais via fluxo de autorização.")
                 self._credentials = None
-        return self  # Permite encadeamento, ex: GrantAccess().refresh_or_obtain_credentials().get_credentials()
+        return self  # Permite encadeamento,
+        # ex: GrantAccess().refresh_or_obtain_credentials().get_credentials()
 
-    def get_credentials(self: Self) -> Optional[Credentials]:
+    def get_credentials(self: Self) -> Optional[Credentials | ExternalCredentials]:
         """
         Retorna as credenciais OAuth2 válidas.
 
@@ -233,5 +251,6 @@ class GrantAccess:
             ser obtidas ou atualizadas.
         """
         if not self._credentials:
-            logger.warning("get_credentials() chamado, mas as credenciais não estão disponíveis ou válidas.")
+            logger.warning("get_credentials() chamado, mas as credenciais"
+                           " não estão disponíveis ou válidas.")
         return self._credentials

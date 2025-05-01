@@ -180,12 +180,16 @@ UI_TEXTS: Dict[str, str] = {
 
     # Mensagens (Messagebox, Logs para Usuário)
     "initialization_error_message": "Falha: {component}\n{error}\n\nAplicação será encerrada.",
-    "critical_error_message": "A aplicação encontrou um erro inesperado e será encerrada:\n\n{error}",
+    "critical_error_message":
+        "A aplicação encontrou um erro inesperado e será encerrada:\n\n{error}",
     "callback_error_message": "Falha ao aplicar filtros:\n{error}",
     "confirm_deletion_message": "Remover registro para:\n{pront} - {nome}?",
-    "confirm_end_session_message": "Isso exportará os dados localmente (se houver) e encerrará a sessão atual.\n\nProsseguir?",
-    "export_failed_message": "Falha ao exportar dados da sessão localmente.\nEncerrar sessão mesmo assim?",
-    "state_error_message": "Não foi possível limpar o arquivo de estado.\nA sessão pode recarregar.",
+    "confirm_end_session_message":
+        "Isso exportará os dados localmente (se houver) e encerrará a sessão atual.\n\nProsseguir?",
+    "export_failed_message":
+        "Falha ao exportar dados da sessão localmente.\nEncerrar sessão mesmo assim?",
+    "state_error_message":
+        "Não foi possível limpar o arquivo de estado.\nA sessão pode recarregar.",
     "no_session_message": "Nenhuma sessão ativa.",
     "operation_failed_message": "Não foi possível {action_desc}.",
     "sync_error_message": "{task_name} Falhou:\n{error}",
@@ -201,7 +205,8 @@ UI_TEXTS: Dict[str, str] = {
     "config_error_message": "Falha na configuração: {config_err}",
     "fatal_app_error_message": "Um erro inesperado ocorreu:\n{app_err}",
     "invalid_time_format": "Formato de hora inválido. Use HH:MM.",
-    "invalid_date_format": "Formato de data inválido. Use {date_format}.",  # Será formatado com DD/MM/YYYY
+    "invalid_date_format":
+        "Formato de data inválido. Use {date_format}.",  # Será formatado com DD/MM/YYYY
     "select_meal_type": "Selecione um Tipo de Refeição válido.",
     "specify_snack_name": "Especifique o nome do lanche para 'Lanche'.",
     "select_one_class": "Selecione pelo menos uma turma participante.",
@@ -211,7 +216,8 @@ UI_TEXTS: Dict[str, str] = {
     "sync_reserves_complete_message": "Reservas sincronizadas com sucesso com o banco de dados.",
     "sync_reserves_unknown_message": "Sincronização finalizada, mas status incerto.",
     "empty_export_message": "Nenhum aluno registrado para exportar.",
-    "confirm_sync_master_message": "Sincronizar dados de alunos e reservas a partir das Planilhas Google?",
+    "confirm_sync_master_message":
+        "Sincronizar dados de alunos e reservas a partir das Planilhas Google?",
 
     # Termos Padrão / Internos (Menos provável de mudar, mas centralizado por segurança)
     "meal_lunch": "Almoço",
