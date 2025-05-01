@@ -105,10 +105,8 @@ class MealSessionHandler:
             turmas: Lista de nomes de turmas selecionadas para esta sessão.
                     Turmas prefixadas com '#' são consideradas "sem reserva obrigatória".
         """
-        logger.debug(
-            f"Definindo informações da sessão: ID={session_id}, Data={date}, Refeição={meal_type}, Grupos={turmas}"
-        )
-
+        logger.debug('Definindo informações da sessão: ID=%s, Data=%s, Refeição=%s, Grupos=%s',
+                     session_id, date, meal_type, turmas)
         self._session_id = session_id
         self._date = date
         # Armazena o tipo de refeição em minúsculo para consistência interna
@@ -131,12 +129,9 @@ class MealSessionHandler:
 
         # Limpa caches sempre que o contexto da sessão muda
         self._clear_caches()
-
-        logger.info(
-            f"Contexto da sessão definido: ID={self._session_id}, Data={self._date}, "
-            f"Refeição={self._meal_type}, GruposComReserva={self._turmas_com_reserva}, "
-            f"GruposSemReserva={self._turmas_sem_reserva}"
-        )
+        logger.info('Contexto da sessão definido: ID=%s, Data=%s, Refeição=%s, GruposComReserva=%s,'
+                    ' GruposSemReserva=%s', self._session_id, self._date, self._meal_type,
+                    self._turmas_com_reserva, self._turmas_sem_reserva)
 
     def _clear_caches(self) -> None:
         """Limpa os caches internos de alunos filtrados, servidos e mapeamentos de ID."""
@@ -170,7 +165,8 @@ class MealSessionHandler:
           uma reserva válida (não cancelada) para a data e tipo de refeição.
         - Se a turma não exige reserva (`_turmas_sem_reserva`), o aluno é elegível
           independentemente de ter reserva ou não.
-        - Alunos já servidos nesta sessão são EXCLUÍDOS implicitamente (pelo cache `_served_pronts`).
+        - Alunos já servidos nesta sessão são EXCLUÍDOS implicitamente (pelo cache
+            `_served_pronts`).
 
         Retorna o resultado do cache se já calculado, caso contrário, executa a
         query no banco de dados e popula os caches internos.
@@ -191,16 +187,16 @@ class MealSessionHandler:
             ]
         ):
             logger.warning(
-                "Não é possível filtrar alunos: Informações da sessão incompletas (data, refeição, id, turmas)."
+                "Não é possível filtrar alunos: Informações da sessão incompletas "
+                "(data, refeição, id, turmas)."
             )
             return None
 
         # Se o cache já existe, retorna diretamente (otimização)
         if self._filtered_students_cache:
-            logger.debug("Retornando alunos elegíveis do cache.")
+            logger.debug('Retornando alunos elegíveis do cache.')
             return self._filtered_students_cache
-
-        logger.debug("Filtrando alunos elegíveis para a sessão (cache vazio)...")
+        logger.debug('Filtrando alunos elegíveis para a sessão (cache vazio)...')
         # Limpa caches (garantia, embora set_session_info já faça isso)
         self._clear_caches()
         # Carrega os prontuários já servidos para uso posterior (exclusão implícita)
@@ -261,7 +257,8 @@ class MealSessionHandler:
                     sql_or(*conditions) if len(conditions) > 1 else conditions[0]
                 )
             else:
-                # Se nenhuma turma foi selecionada (não deveria acontecer devido à validação anterior)
+                # Se nenhuma turma foi selecionada (não deveria acontecer devido à
+                #   validação anterior)
                 logger.warning(
                     "Nenhuma turma selecionada para filtragem. Retornando lista vazia."
                 )
@@ -278,9 +275,7 @@ class MealSessionHandler:
 
             # Executa a query
             results = query.all()
-            logger.debug(
-                f"Query executada, processando {len(results)} resultados brutos."
-            )
+            logger.debug('Query executada, processando %s resultados brutos.', len(results))
 
             # --- Pós-Processamento dos Resultados ---
             # Agrega informações por aluno (caso um aluno esteja em múltiplas turmas elegíveis)
@@ -339,34 +334,29 @@ class MealSessionHandler:
                 if pront not in self._served_pronts
             ]
 
-            logger.info(
-                f"{len(self._filtered_students_cache)} alunos elegíveis (e não servidos) "
-                f"filtrados para a sessão {self._session_id}."
-            )
+            logger.info('%s alunos elegíveis (e não servidos) filtrados para a sessão %s.',
+                        len(self._filtered_students_cache), self._session_id)
             return self._filtered_students_cache
 
         except SQLAlchemyError as e:
-            logger.exception(
-                f"Erro de banco de dados durante filtragem de alunos para sessão {self._session_id}: {e}"
-            )
+            logger.exception('Erro de banco de dados durante filtragem de alunos para'
+                             ' sessão %s: %s', self._session_id, e)
             self.db_session.rollback()
             self._clear_caches()  # Limpa caches em caso de erro
             return None
         except Exception as e:
-            logger.exception(f"Erro inesperado durante filtragem de alunos: {e}")
+            logger.exception('Erro inesperado durante filtragem de alunos: %s', e)
             self._clear_caches()
             return None
 
     def _load_served_pronts_from_db(self) -> None:
-        """Carrega os prontuários dos alunos servidos na sessão atual do DB para o cache `_served_pronts`."""
+        """Carrega os prontuários dos alunos servidos na sessão atual do DB para o cache
+        `_served_pronts`."""
         if self._session_id is None:
-            logger.debug("Não é possível carregar servidos: ID da sessão não definido.")
+            logger.debug('Não é possível carregar servidos: ID da sessão não definido.')
             self._served_pronts = set()
             return
-
-        logger.debug(
-            f"Carregando prontuários servidos do DB para sessão {self._session_id}..."
-        )
+        logger.debug('Carregando prontuários servidos do DB para sessão %s...', self._session_id)
         try:
             # Query simples para buscar prontuários da tabela Consumption para a sessão atual
             served_query = (
@@ -377,17 +367,15 @@ class MealSessionHandler:
 
             # Executa a query e monta o conjunto de prontuários
             self._served_pronts = {pront for (pront,) in served_query.all()}
-            logger.debug(
-                f"Carregados {len(self._served_pronts)} prontuários servidos do DB para sessão {self._session_id}."
-            )
+            logger.debug('Carregados %s prontuários servidos do DB para sessão %s.',
+                         len(self._served_pronts), self._session_id)
         except SQLAlchemyError as e:
-            logger.exception(
-                f"Erro DB ao carregar PRONTs servidos para sessão {self._session_id}: {e}"
-            )
+            logger.exception('Erro DB ao carregar PRONTs servidos para sessão %s: %s',
+                             self._session_id, e)
             self.db_session.rollback()
             self._served_pronts = set()  # Limpa cache em caso de erro
         except Exception as e:
-            logger.exception(f"Erro inesperado ao carregar PRONTs servidos: {e}")
+            logger.exception('Erro inesperado ao carregar PRONTs servidos: %s', e)
             self._served_pronts = set()
 
     def _get_or_find_student_details(
@@ -414,7 +402,7 @@ class MealSessionHandler:
             return student_id, reserve_id
 
         # Cache miss: Busca no banco de dados
-        logger.debug(f"Cache miss para detalhes do aluno {pront}. Consultando DB...")
+        logger.debug('Cache miss para detalhes do aluno %s. Consultando DB...', pront)
         try:
             # Busca o aluno pelo prontuário
             student_record = self.student_crud.read_filtered_one(pront=pront)
@@ -437,22 +425,20 @@ class MealSessionHandler:
                 self._pront_to_student_id_map[pront] = student_id
                 self._pront_to_reserve_id_map[pront] = reserve_id
                 logger.debug(
-                    f"Detalhes para {pront} encontrados no DB: student_id={student_id}, reserve_id={reserve_id}. Caches atualizados."
-                )
-                return student_id, reserve_id
-            else:
+                    'Detalhes para %s encontrados no DB: student_id=%s, reserve_id=%s. '
+                    'Caches atualizados.', pront, student_id, reserve_id)
+                return (student_id, reserve_id)
                 # Aluno não encontrado no banco de dados
-                logger.warning(
-                    f"Aluno {pront} não encontrado no DB ao buscar detalhes."
-                )
-                return None, None
+            else:
+                logger.warning('Aluno %s não encontrado no DB ao buscar detalhes.', pront)
+                return (None, None)
         except SQLAlchemyError as e:
-            logger.exception(f"Erro DB ao buscar detalhes para {pront}: {e}")
+            logger.exception('Erro DB ao buscar detalhes para %s: %s', pront, e)
             self.db_session.rollback()
-            return None, None
+            return (None, None)
         except Exception as e:
-            logger.exception(f"Erro inesperado ao buscar detalhes para {pront}: {e}")
-            return None, None
+            logger.exception('Erro inesperado ao buscar detalhes para %s: %s', pront, e)
+            return (None, None)
 
     def record_consumption(self, student_info: Tuple[str, str, str, str, str]) -> bool:
         """
@@ -467,25 +453,22 @@ class MealSessionHandler:
             (ex: sessão inativa, aluno não encontrado, já servido, erro DB).
         """
         if self._session_id is None:
-            logger.error("Não é possível registrar consumo: Nenhuma sessão ativa.")
+            logger.error('Não é possível registrar consumo: Nenhuma sessão ativa.')
             return False
 
         pront = student_info[0]
         # Verifica se o aluno já consta como servido no cache desta sessão
         if pront in self._served_pronts:
-            logger.warning(
-                f"Consumo não registrado: {pront} já marcado como servido nesta sessão."
-            )
+            logger.warning('Consumo não registrado: %s já marcado como servido nesta sessão.',
+                           pront)
             return False
 
         # Obtém os IDs necessários (do cache ou DB)
         student_id, reserve_id = self._get_or_find_student_details(pront)
 
+        # Se não encontrou o aluno, não pode registrar
         if student_id is None:
-            # Se não encontrou o aluno, não pode registrar
-            logger.error(
-                f"Não é possível registrar consumo: Aluno {pront} não encontrado."
-            )
+            logger.error('Não é possível registrar consumo: Aluno %s não encontrado.', pront)
             return False
 
         # Prepara os dados para a tabela Consumption
@@ -507,9 +490,7 @@ class MealSessionHandler:
             if created_consumption:
                 # Sucesso: Adiciona ao cache de servidos e loga
                 self._served_pronts.add(pront)
-                logger.info(
-                    f"Consumo registrado para {pront} na sessão {self._session_id}."
-                )
+                logger.info('Consumo registrado para %s na sessão %s.', pront, self._session_id)
                 # Atualiza cache de alunos elegíveis (remove o aluno recém-registrado)
                 self._filtered_students_cache = [
                     s for s in self._filtered_students_cache if s.get("Pront") != pront
@@ -518,34 +499,33 @@ class MealSessionHandler:
             else:
                 # CRUD.create pode retornar None se ocorrer erro interno e rollback
                 logger.error(
-                    f"Falha ao criar registro de consumo para {pront} (CRUD retornou não-True). Verificando status atual."
+                    "Falha ao criar registro de consumo para %s (CRUD retornou não-True)."
+                    " Verificando status atual.", pront
                 )
                 self.db_session.rollback()  # Garante rollback se o CRUD não fez
                 # Recarrega servidos do DB para verificar se já existe (concorrência?)
                 self._load_served_pronts_from_db()
                 if pront in self._served_pronts:
                     logger.warning(
-                        f"Registro de consumo para {pront} parece existir agora (possível condição de corrida ou conflito)."
-                    )
+                        'Registro de consumo para %s parece existir agora (possível condição de'
+                        ' corrida ou conflito).', pront)
                     # Considera como "falha" porque a operação original não inseriu,
                     # mas o estado final é que o aluno está servido. A UI deve refletir isso.
                 return False
         except SQLAlchemyError as e:
             # Erro durante a operação de criação no DB
-            logger.exception(
-                f"Erro ao registrar consumo para {pront} na sessão {self._session_id}: {e}"
-            )
+            logger.exception('Erro ao registrar consumo para %s na sessão %s: %s',
+                             pront, self._session_id, e)
             self.db_session.rollback()
             # Recarrega para garantir consistência do cache
             self._load_served_pronts_from_db()
             if pront in self._served_pronts:
-                logger.warning(
-                    f"Registro de consumo falhou para {pront}, mas DB mostra status servido."
-                )
+                logger.warning('Registro de consumo falhou para %s, mas DB mostra status servido.',
+                               pront)
             return False
         except Exception as e:
             # Outro erro inesperado
-            logger.exception(f"Erro inesperado ao registrar consumo para {pront}: {e}")
+            logger.exception('Erro inesperado ao registrar consumo para %s: %s', pront, e)
             self.db_session.rollback()
             return False
 
@@ -562,35 +542,30 @@ class MealSessionHandler:
             (ex: sessão inativa, aluno não servido, erro DB).
         """
         if self._session_id is None:
-            logger.error("Não é possível deletar consumo: Nenhuma sessão ativa.")
+            logger.error('Não é possível deletar consumo: Nenhuma sessão ativa.')
             return False
 
         pront = student_info[0]
         # Verifica se o aluno realmente está no cache de servidos
         if pront not in self._served_pronts:
-            logger.warning(
-                f"Não é possível deletar consumo: {pront} não está marcado como servido nesta sessão (cache)."
-            )
+            logger.warning('Não é possível deletar consumo: %s não está marcado como servido'
+                           ' nesta sessão (cache).', pront)
             # Tenta recarregar do DB para garantir
             self._load_served_pronts_from_db()
             if pront not in self._served_pronts:
-                logger.warning(
-                    f"Confirmado que {pront} não está servido no DB. Deleção abortada."
-                )
+                logger.warning('Confirmado que %s não está servido no DB. Deleção abortada.', pront)
                 return False
             else:
-                logger.warning(
-                    f"Inconsistência de cache detectada para {pront} ao deletar. Prosseguindo com ID do DB."
-                )
+                logger.warning('Inconsistência de cache detectada para %s ao deletar. Prosseguindo'
+                               ' com ID do DB.', pront)
 
         # Obtém o ID do aluno (necessário para a query de deleção)
         student_id, _ = self._get_or_find_student_details(pront)
 
+        # Inconsistência grave: está no cache de servidos mas não acha o aluno no DB
         if student_id is None:
-            # Inconsistência grave: está no cache de servidos mas não acha o aluno no DB
-            logger.error(
-                f"Inconsistência: {pront} no cache de servidos, mas aluno não encontrado no DB para deleção."
-            )
+            logger.error('Inconsistência: %s no cache de servidos, mas aluno não encontrado'
+                         ' no DB para deleção.', pront)
             self._served_pronts.discard(pront)  # Remove do cache para corrigir
             return False
 
@@ -608,29 +583,27 @@ class MealSessionHandler:
                 # Sucesso: commita a transação e atualiza o cache
                 self.db_session.commit()
                 self._served_pronts.discard(pront)
-                logger.info(
-                    f"Registro de consumo deletado para {pront} na sessão {self._session_id} ({deleted_count} linha(s))."
-                )
+                logger.info('Registro de consumo deletado para %s na sessão %s (%s linha(s)).',
+                            pront, self._session_id, deleted_count)
                 # Força recarregamento da lista de elegíveis na próxima busca
                 self._filtered_students_cache = []
                 return True
             else:
                 # Nenhuma linha foi deletada (registro não existia no DB?)
-                self.db_session.rollback()  # Desfaz a transação (embora nada tenha sido feito)
+                self.db_session.rollback()
                 logger.warning(
-                    f"Nenhum registro de consumo encontrado no DB para deletar para {pront} na sessão {self._session_id}. Cache pode estar inconsistente."
-                )
+                    'Nenhum registro de consumo encontrado no DB para deletar para %s na'
+                    ' sessão %s. Cache pode estar inconsistente.', pront, self._session_id)
                 # Recarrega o cache de servidos para garantir consistência
                 self._load_served_pronts_from_db()
                 return False
         except SQLAlchemyError as e:
-            logger.exception(
-                f"Erro DB ao deletar consumo para {pront} na sessão {self._session_id}: {e}"
-            )
+            logger.exception('Erro DB ao deletar consumo para %s na sessão %s: %s',
+                             pront, self._session_id, e)
             self.db_session.rollback()
             return False
         except Exception as e:
-            logger.exception(f"Erro inesperado ao deletar consumo para {pront}: {e}")
+            logger.exception('Erro inesperado ao deletar consumo para %s: %s', pront, e)
             self.db_session.rollback()
             return False
 
@@ -649,14 +622,10 @@ class MealSessionHandler:
                                     A hora pode ser usada para inserção.
         """
         if self._session_id is None:
-            logger.error(
-                "Não é possível sincronizar estado de consumo: Nenhuma sessão ativa."
-            )
+            logger.error('Não é possível sincronizar estado de consumo: Nenhuma sessão ativa.')
             return
-
-        logger.info(
-            f"Iniciando sincronização de estado de consumo para sessão {self._session_id}."
-        )
+        logger.info('Iniciando sincronização de estado de consumo para sessão %s.',
+                    self._session_id)
 
         # Conjunto de prontuários do snapshot alvo
         target_served_pronts: Set[str] = {item[0] for item in target_served_snapshot}
@@ -667,17 +636,12 @@ class MealSessionHandler:
         pronts_to_unmark = current_served_pronts_cache.difference(target_served_pronts)
         # Alunos a adicionar no DB (estão no snapshot mas não no cache/DB atual)
         pronts_to_mark = target_served_pronts.difference(current_served_pronts_cache)
-
-        logger.debug(
-            f"Sincronização necessária: Remover {len(pronts_to_unmark)}, Adicionar {len(pronts_to_mark)}"
-        )
-
+        logger.debug('Sincronização necessária: Remover %s, Adicionar %s',
+                     len(pronts_to_unmark), len(pronts_to_mark))
         try:
             # --- Remoção ---
             if pronts_to_unmark:
-                logger.debug(
-                    f"Removendo {len(pronts_to_unmark)} alunos: {pronts_to_unmark}"
-                )
+                logger.debug('Removendo %s alunos: %s', len(pronts_to_unmark), pronts_to_unmark)
                 # Subquery para obter os IDs dos alunos a serem removidos
                 student_ids_to_unmark_subquery = (
                     self.db_session.query(Student.id)
@@ -690,13 +654,11 @@ class MealSessionHandler:
                     Consumption.student_id.in_(student_ids_to_unmark_subquery),
                 )
                 result_del = self.db_session.execute(delete_stmt)
-                logger.info(f"{result_del.rowcount} registros de consumo removidos.")
+                logger.info('%s registros de consumo removidos.', result_del.rowcount)
 
             # --- Adição ---
             if pronts_to_mark:
-                logger.debug(
-                    f"Adicionando {len(pronts_to_mark)} alunos: {pronts_to_mark}"
-                )
+                logger.debug('Adicionando %s alunos: %s', len(pronts_to_mark), pronts_to_mark)
                 consumption_data_to_insert = []
                 # Cria um mapa do snapshot para buscar a hora do consumo original, se disponível
                 snapshot_map = {item[0]: item for item in target_served_snapshot}
@@ -705,9 +667,8 @@ class MealSessionHandler:
                     # Obtém detalhes do aluno (ID, reserva ID)
                     student_id, reserve_id = self._get_or_find_student_details(pront)
                     if student_id is None:
-                        logger.warning(
-                            f"Não é possível marcar {pront} como servido: Aluno não encontrado. Pulando."
-                        )
+                        logger.warning('Não é possível marcar %s como servido:'
+                                       ' Aluno não encontrado. Pulando.', pront)
                         continue
 
                     # Obtém a hora do snapshot ou usa a hora atual como fallback
@@ -729,11 +690,11 @@ class MealSessionHandler:
                     )
 
                 if consumption_data_to_insert:
-                    logger.debug(
-                        f"Tentando inserção em lote de {len(consumption_data_to_insert)} registros de consumo."
-                    )
-                    # Usa insert específico do SQLite para ignorar conflitos (registros já existentes)
-                    # Isso evita erros se um registro foi criado entre o início da sync e a inserção.
+                    logger.debug('Tentando inserção em lote de %s registros de consumo.',
+                                 len(consumption_data_to_insert))
+                    # Usa insert específico do SQLite para ignorar conflitos
+                    # (registros já existentes). Isso evita erros se um registro foi criado
+                    # entre o início da sync e a inserção.
                     insert_stmt = sqlite_insert(Consumption).values(
                         consumption_data_to_insert
                     )
@@ -744,11 +705,10 @@ class MealSessionHandler:
                             "session_id",
                         ]  # Nome da constraint ou colunas
                     )
-                    result_ins = self.db_session.execute(insert_stmt)
                     # rowcount pode ser 0 se todos já existiam
-                    logger.info(
-                        f"Tentativa de inserção em lote concluída (linhas afetadas/inseridas: {result_ins.rowcount})."
-                    )
+                    result_ins = self.db_session.execute(insert_stmt)
+                    logger.info('Tentativa de inserção em lote concluída (linhas afetadas/'
+                                'inseridas: %s).',result_ins.rowcount)
 
             # Commita as remoções e adições
             self.db_session.commit()
@@ -756,21 +716,16 @@ class MealSessionHandler:
             self._served_pronts = target_served_pronts
             # Limpa cache de elegíveis pois o estado mudou
             self._filtered_students_cache = []
-            logger.info(
-                f"Sincronização de estado de consumo concluída com sucesso para sessão {self._session_id}."
-            )
-
+            logger.info('Sincronização de estado de consumo concluída com sucesso para sessão %s.',
+                        self._session_id)
         except SQLAlchemyError as e:
-            logger.exception(
-                f"Erro DB durante sincronização de estado de consumo para sessão {self._session_id}: {e}"
-            )
+            logger.exception('Erro DB durante sincronização de estado de'
+                             ' consumo para sessão %s: %s', self._session_id, e)
             self.db_session.rollback()
             # Recarrega o estado do DB em caso de falha para manter consistência
             self._load_served_pronts_from_db()
         except Exception as e:
-            logger.exception(
-                f"Erro inesperado durante sincronização de estado de consumo: {e}"
-            )
+            logger.exception('Erro inesperado durante sincronização de estado de consumo: %s', e)
             self.db_session.rollback()
             self._load_served_pronts_from_db()
 
@@ -784,7 +739,7 @@ class MealSessionHandler:
         """
         # Se o cache está vazio (primeira chamada ou após clear/sync)
         if not self._filtered_students_cache:
-            logger.debug("Cache de alunos elegíveis vazio. Disparando filtro.")
+            logger.debug('Cache de alunos elegíveis vazio. Disparando filtro.')
             # Tenta preencher o cache. filter_eligible_students lida com erros internos.
             self.filter_eligible_students()
         # Retorna o conteúdo atual do cache (pode ser vazio se filtro falhou ou não encontrou nada)
@@ -801,15 +756,11 @@ class MealSessionHandler:
             Retorna lista vazia se não houver alunos servidos ou ocorrer um erro.
         """
         if self._session_id is None:
-            logger.warning(
-                "Não é possível obter detalhes de servidos: Nenhuma sessão ativa."
-            )
+            logger.warning('Não é possível obter detalhes de servidos: Nenhuma sessão ativa.')
             self._served_pronts = set()  # Garante que o cache está limpo
             return []
-
-        logger.debug(
-            f"Consultando DB para detalhes dos alunos servidos na sessão {self._session_id}."
-        )
+        logger.debug('Consultando DB para detalhes dos alunos servidos na sessão %s.',
+                     self._session_id)
         try:
             # Aliases para clareza
             s, g, r, c = (
@@ -870,21 +821,17 @@ class MealSessionHandler:
 
             # Atualiza o cache de prontuários servidos com o resultado fresco do DB
             self._served_pronts = current_served_pronts_db
-            logger.info(
-                f"{len(served_students_data)} detalhes de alunos servidos recuperados para sessão {self._session_id}."
-            )
+            logger.info('%s detalhes de alunos servidos recuperados para sessão %s.',
+                        len(served_students_data), self._session_id)
             return served_students_data
 
         except SQLAlchemyError as e:
-            logger.exception(
-                f"Erro DB ao recuperar detalhes de alunos servidos para sessão {self._session_id}: {e}"
-            )
+            logger.exception('Erro DB ao recuperar detalhes de alunos servidos para sessão %s: %s',
+                             self._session_id, e)
             self.db_session.rollback()
             self._served_pronts = set()  # Limpa cache em caso de erro
             return []
         except Exception as e:
-            logger.exception(
-                f"Erro inesperado ao recuperar detalhes de alunos servidos: {e}"
-            )
+            logger.exception('Erro inesperado ao recuperar detalhes de alunos servidos: %s', e)
             self._served_pronts = set()
             return []

@@ -160,7 +160,7 @@ def process_file(filename: str) -> bool:
         # Write back if changed
         if transform_count > 0:
             print(f"  Applying {transform_count} transformation(s).", file=sys.stderr)
-            with open(filename, 'w', encoding='utf-8') as f_out:
+            with open(filename.replace('.py', '_md.py'), 'w', encoding='utf-8') as f_out:
                 f_out.write(modified_content)
         else:
             print("  No transformations needed.", file=sys.stderr)
