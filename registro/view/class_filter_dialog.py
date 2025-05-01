@@ -11,11 +11,12 @@ para cada turma selecionada).
 """
 import logging
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import BOTH, CENTER, EW, HORIZONTAL, NSEW, YES, messagebox
 from typing import List, Tuple, Callable, TYPE_CHECKING
 
 import ttkbootstrap as ttk
-from ttkbootstrap.constants import *  # Importa constantes de estilo e layout
+
+# from ttkbootstrap.constants import *  # Importa constantes de estilo e layout
 
 # Importações locais
 from registro.control.constants import UI_TEXTS  # Centralização de textos
@@ -54,18 +55,30 @@ def create_dialog_class_filter_section(
     # --- Cabeçalhos ---
     if not available_classes:
         # Mensagem se não houver turmas
-        ttk.Label(inner_frame, text=UI_TEXTS.get("no_classes_available", "Nenhuma turma disponível.")).grid(
-            row=0, column=0, columnspan=2, pady=5)
+        ttk.Label(
+            inner_frame,
+            text=UI_TEXTS.get("no_classes_available", "Nenhuma turma disponível."),
+        ).grid(row=0, column=0, columnspan=2, pady=5)
         return [], inner_frame  # Retorna lista vazia e o frame
 
     # Labels para as colunas "Com Reserva" e "Sem Reserva"
-    ttk.Label(inner_frame, text=UI_TEXTS.get("show_with_reservation", "Mostrar COM Reserva"), bootstyle="success",
-              anchor=CENTER).grid(row=0, column=0, sticky=EW, padx=5, pady=(0, 5))
-    ttk.Label(inner_frame, text=UI_TEXTS.get("show_without_reservation", "Mostrar SEM Reserva (#)"), bootstyle="warning",
-              anchor=CENTER).grid(row=0, column=1, sticky=EW, padx=5, pady=(0, 5))
+    ttk.Label(
+        inner_frame,
+        text=UI_TEXTS.get("show_with_reservation", "Mostrar COM Reserva"),
+        bootstyle="success",# type: ignore
+        anchor=CENTER,
+    ).grid(row=0, column=0, sticky=EW, padx=5, pady=(0, 5))
+    ttk.Label(
+        inner_frame,
+        text=UI_TEXTS.get("show_without_reservation", "Mostrar SEM Reserva (#)"),
+        bootstyle="warning",# type: ignore
+        anchor=CENTER,
+    ).grid(row=0, column=1, sticky=EW, padx=5, pady=(0, 5))
 
     # Separador horizontal
-    ttk.Separator(inner_frame, orient=HORIZONTAL).grid(row=1, column=0, columnspan=2, sticky=EW, pady=(0, 10))
+    ttk.Separator(inner_frame, orient=HORIZONTAL).grid(
+        row=1, column=0, columnspan=2, sticky=EW, pady=(0, 10)
+    )
 
     # --- Criação dos Checkbuttons ---
     # Itera sobre as turmas disponíveis para criar os pares de checkbuttons
@@ -81,14 +94,14 @@ def create_dialog_class_filter_section(
             inner_frame,
             text=class_name,  # Texto exibido é o nome da turma
             variable=var_with_reserve,
-            bootstyle="success-square-toggle"  # Estilo visual
+            bootstyle="success-square-toggle",  # Estilo visual # type: ignore
         )
         # Checkbutton para "Mostrar SEM Reserva"
         btn_without_reserve = ttk.Checkbutton(
             inner_frame,
             text=class_name,  # Texto exibido é o nome da turma
             variable=var_without_reserve,
-            bootstyle="warning-square-toggle"  # Estilo visual
+            bootstyle="warning-square-toggle",  # Estilo visual # type: ignore
         )
 
         # Posiciona os checkbuttons no grid
@@ -97,10 +110,12 @@ def create_dialog_class_filter_section(
 
         # Armazena os dados relevantes para cada checkbutton
         # O identificador para "sem reserva" é prefixado com '#'
-        checkbuttons_data.extend([
-            (class_name, var_with_reserve, btn_with_reserve),
-            (f"#{class_name}", var_without_reserve, btn_without_reserve)
-        ])
+        checkbuttons_data.extend(
+            [
+                (class_name, var_with_reserve, btn_with_reserve),
+                (f"#{class_name}", var_without_reserve, btn_without_reserve),
+            ]
+        )
 
     return checkbuttons_data, inner_frame
 
@@ -112,8 +127,12 @@ class ClassFilterDialog(tk.Toplevel):
     alunos elegíveis da aplicação principal.
     """
 
-    def __init__(self, parent: 'RegistrationApp', session_manager: 'SessionManager',
-                 apply_callback: Callable[[List[str]], None]):
+    def __init__(
+        self,
+        parent: "RegistrationApp",
+        session_manager: "SessionManager",
+        apply_callback: Callable[[List[str]], None],
+    ):
         """
         Inicializa o diálogo de filtro de turmas.
 
@@ -147,15 +166,21 @@ class ClassFilterDialog(tk.Toplevel):
         # Busca todas as turmas cadastradas, exceto 'Vazio'
         try:
             available_classes = sorted(
-                set(g.nome for g in self._session_manager.turma_crud.read_all()
-                    if g.nome and g.nome.strip() and g.nome.lower() != 'vazio')
+                set(
+                    g.nome
+                    for g in self._session_manager.turma_crud.read_all()
+                    if g.nome and g.nome.strip() and g.nome.lower() != "vazio"
+                )
             )
         except Exception as e:
-            logger.exception("Erro ao buscar turmas disponíveis no banco de dados.")
+            logger.exception("Erro ao buscar turmas disponíveis no banco de dados. %s: %s",
+                             type(e).__name__, e)
             messagebox.showerror(
                 UI_TEXTS.get("database_error_title", "Erro de Banco de Dados"),
-                UI_TEXTS.get("error_fetching_classes", "Não foi possível buscar as turmas."),
-                parent=self
+                UI_TEXTS.get(
+                    "error_fetching_classes", "Não foi possível buscar as turmas."
+                ),
+                parent=self,
             )
             available_classes = []  # Continua com lista vazia
 
@@ -181,26 +206,34 @@ class ClassFilterDialog(tk.Toplevel):
 
         # Botão Limpar Todos
         ttk.Button(
-            button_frame, text=UI_TEXTS.get("clear_all_button", "⚪ Limpar Todos"),
-            command=self._clear_all, bootstyle="secondary-outline"
+            button_frame,
+            text=UI_TEXTS.get("clear_all_button", "⚪ Limpar Todos"),
+            command=self._clear_all,
+            bootstyle="secondary-outline",# type: ignore
         ).grid(row=0, column=0, padx=3, pady=5, sticky=EW)
 
         # Botão Selecionar Todos
         ttk.Button(
-            button_frame, text=UI_TEXTS.get("select_all_button", "✅ Selecionar Todos"),
-            command=self._select_all, bootstyle="secondary-outline"
+            button_frame,
+            text=UI_TEXTS.get("select_all_button", "✅ Selecionar Todos"),
+            command=self._select_all,
+            bootstyle="secondary-outline",# type: ignore
         ).grid(row=0, column=1, padx=3, pady=5, sticky=EW)
 
         # Botão Cancelar
         ttk.Button(
-            button_frame, text=UI_TEXTS.get("cancel_button", "❌ Cancelar"),
-            command=self._on_cancel, bootstyle="danger"
+            button_frame,
+            text=UI_TEXTS.get("cancel_button", "❌ Cancelar"),
+            command=self._on_cancel,
+            bootstyle="danger",# type: ignore
         ).grid(row=0, column=2, padx=3, pady=5, sticky=EW)
 
         # Botão Aplicar Filtros
         ttk.Button(
-            button_frame, text=UI_TEXTS.get("apply_filters_button", "✔️ Aplicar Filtros"),
-            command=self._on_apply, bootstyle="success"
+            button_frame,
+            text=UI_TEXTS.get("apply_filters_button", "✔️ Aplicar Filtros"),
+            command=self._on_apply,
+            bootstyle="success",# type: ignore
         ).grid(row=0, column=3, padx=3, pady=5, sticky=EW)
 
         # --- Configurações Finais da Janela ---
@@ -208,12 +241,12 @@ class ClassFilterDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
 
         self.update_idletasks()  # Garante que dimensões da janela sejam calculadas
-        self._center_window()   # Centraliza em relação à janela pai
+        self._center_window()  # Centraliza em relação à janela pai
         self.resizable(True, True)  # Permite redimensionamento
         self.deiconify()  # Exibe a janela que estava escondida
 
     def _center_window(self):
-        """ Centraliza o diálogo em relação à janela pai. """
+        """Centraliza o diálogo em relação à janela pai."""
         self.update_idletasks()  # Garante que winfo_width/height retornem valores corretos
         parent = self._parent_app
         # Obtém geometria da janela pai
@@ -250,7 +283,7 @@ class ClassFilterDialog(tk.Toplevel):
             var_tk.set(identifier in selected_set)
 
     def _clear_all(self):
-        """ Desmarca todos os checkbuttons no diálogo. """
+        """Desmarca todos os checkbuttons no diálogo."""
         if not self._checkbox_data:
             return
         logger.debug("Limpando todas as seleções do filtro de turmas.")
@@ -258,7 +291,7 @@ class ClassFilterDialog(tk.Toplevel):
             var_tk.set(False)
 
     def _select_all(self):
-        """ Marca todos os checkbuttons no diálogo. """
+        """Marca todos os checkbuttons no diálogo."""
         if not self._checkbox_data:
             return
         logger.debug("Selecionando todas as opções do filtro de turmas.")
@@ -266,7 +299,7 @@ class ClassFilterDialog(tk.Toplevel):
             var_tk.set(True)
 
     def _on_cancel(self):
-        """ Ação executada quando o diálogo é cancelado (botão Cancelar ou fechar janela). """
+        """Ação executada quando o diálogo é cancelado (botão Cancelar ou fechar janela)."""
         logger.debug("Diálogo de filtro de turmas cancelado.")
         self.grab_release()  # Libera o foco modal
         self.destroy()  # Fecha a janela do diálogo
@@ -284,7 +317,7 @@ class ClassFilterDialog(tk.Toplevel):
         newly_selected_identifiers = [
             identifier for identifier, var_tk, _ in self._checkbox_data if var_tk.get()
         ]
-        logger.info(f"Aplicando filtros de turma: {newly_selected_identifiers}")
+        logger.info("Aplicando filtros de turma: %s", newly_selected_identifiers)
 
         try:
             # Chama a função de callback passada na inicialização
@@ -294,10 +327,14 @@ class ClassFilterDialog(tk.Toplevel):
             self.destroy()
         except Exception as e:
             # Se ocorrer erro durante o callback (ex: erro ao aplicar filtro no SessionManager)
-            logger.exception("Erro ocorreu durante a execução do callback de aplicação de filtro.")
+            logger.exception(
+                "Erro ocorreu durante a execução do callback de aplicação de filtro."
+            )
             messagebox.showerror(
                 UI_TEXTS.get("callback_error_title", "Erro no Callback"),
-                UI_TEXTS.get("callback_error_message", "Falha ao aplicar filtros:\n{error}").format(error=e),
-                parent=self  # Define o diálogo como pai da messagebox
+                UI_TEXTS.get(
+                    "callback_error_message", "Falha ao aplicar filtros:\n{error}"
+                ).format(error=e),
+                parent=self,  # Define o diálogo como pai da messagebox
             )
             # Não fecha o diálogo se o callback falhar, permitindo ao usuário tentar novamente
