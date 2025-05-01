@@ -62,7 +62,7 @@ class SimpleTreeView:
         master: tk.Widget,
         coldata: List[Dict[str, Any]],
         height: int = 10,
-        bootstyle: str = PRIMARY,
+        bootstyle: str = "info",
     ):
         """
         Inicializa a SimpleTreeView.
@@ -433,6 +433,12 @@ class ActionSearchPanel(ttk.Frame):
         if self._search_entry:
             self._search_entry.bind(
                 "<Return>", lambda _: self._register_selected_eligible())
+            self._search_entry.bind(
+                "<Down>", lambda _: self._select_next_eligible(1))
+            self._search_entry.bind(
+                "<Up>", lambda _: self._select_next_eligible(-1))
+            self._search_entry.bind(
+                "<Escape>", lambda _: self._search_entry_var.set(""))  # Limpa busca
         if self._eligible_students_tree:
             self._eligible_students_tree.view.bind(
                 "<<TreeviewSelect>>", self._on_eligible_student_select)
@@ -493,16 +499,16 @@ class ActionSearchPanel(ttk.Frame):
 
     def _create_preview_area(self):
         """ Cria a área para exibir informações do aluno selecionado. """
-        preview_frame = ttk.Frame(self, padding=(0, 5))
+        preview_frame = ttk.Frame(self, padding=(0, 0))
         # Posiciona abaixo da lista de elegíveis
-        preview_frame.grid(row=3, column=0, sticky="ew", pady=(5, 5))
+        preview_frame.grid(row=3, column=0, sticky="ew", pady=(5, 0))
         # Label para o preview
         self._selected_student_label = ttk.Label(
             preview_frame,
             text=UI_TEXTS.get("select_student_preview",
                               "Selecione um aluno da lista."),
             justify=LEFT,
-            style="Preview.TLabel",  # Usa estilo customizado
+            bootstyle="inverse-info",
             wraplength=350,  # Quebra linha para nomes/turmas longas
         )
         self._selected_student_label.pack(fill=X, expand=True)
@@ -612,6 +618,24 @@ class ActionSearchPanel(ttk.Frame):
         self._search_after_id = self.after(
             self.SEARCH_DEBOUNCE_DELAY, self._perform_actual_search
         )
+
+    def _select_next_eligible(self, delta: int = 1):
+        try:
+            if self._eligible_students_tree and self._eligible_students_tree.get_children_iids():
+                selected_iid = self._eligible_students_tree.get_selected_iid()
+
+                iid_list = self._eligible_students_tree.get_children_iids()
+
+                for i, iid in enumerate(iid_list):
+                    if iid == selected_iid:
+                        pos = i + delta
+                        next_iid = iid_list[pos] if 0 <= pos < len(
+                            iid_list) else iid_list[0 if pos < 0 else len(iid_list) - 1]
+                        self._eligible_students_tree.view.focus(next_iid)
+                        self._eligible_students_tree.view.selection_set(next_iid)
+                        break
+        except Exception as e:
+            logger.error("Erro ao auto-selecionar próximo item da busca: %s", e)
 
     def _perform_actual_search(self):
         """ Executa a busca filtrada e atualiza a lista de elegíveis. """
@@ -986,7 +1010,7 @@ class StatusRegisteredPanel(ttk.Frame):
             app: Referência à instância principal da RegistrationApp.
             session_manager: Instância do SessionManager para acesso aos dados.
         """
-        super().__init__(master, padding=10)
+        super().__init__(master, padding=(10, 10, 10, 0))
         self._app = app
         self._session_manager = session_manager
 
@@ -997,7 +1021,7 @@ class StatusRegisteredPanel(ttk.Frame):
 
         # Configuração do Grid interno
         # Área da tabela expande verticalmente
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)  # Expansão horizontal
 
         # Definição das colunas da tabela de registrados (lazy initialization)
@@ -1036,7 +1060,7 @@ class StatusRegisteredPanel(ttk.Frame):
     def _create_counters_area(self):
         """ Cria a área superior com os labels de contagem. """
         counters_frame = ttk.Frame(self)
-        counters_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        counters_frame.grid(row=1, column=0, sticky="ew", pady=(5, 0))
 
         # Label Contagem Registrados
         self._registered_count_label = ttk.Label(
@@ -1044,14 +1068,14 @@ class StatusRegisteredPanel(ttk.Frame):
             # Texto inicial, será atualizado por update_counters()
             text=UI_TEXTS.get("registered_count_label",
                               "Registrados: {count}").format(count="-"),
-            bootstyle="inverse-primary",  # Estilo visual
+            bootstyle="secondary",  # Estilo visual
             font=("Helvetica", 10, "bold"),
             padding=5,
             # style="Count.TLabel",  # Usa estilo customizado
             anchor=CENTER
         )
         self._registered_count_label.pack(
-            side=tk.LEFT, padx=(0, 5), pady=5, fill=tk.X, expand=True)
+            side=tk.LEFT, padx=(0, 5), pady=0, fill=tk.X, expand=True)
 
         # Label Contagem Elegíveis/Restantes
         self._remaining_count_label = ttk.Label(
@@ -1059,14 +1083,14 @@ class StatusRegisteredPanel(ttk.Frame):
             # Texto inicial, será atualizado por update_counters()
             text=UI_TEXTS.get("remaining_count_label", "Elegíveis: {eligible_count} / Restantes: {remaining_count}").format(
                 eligible_count="-", remaining_count="-"),
-            bootstyle="inverse-success",  # Estilo visual
+            bootstyle="secondary",  # Estilo visual
             font=("Helvetica", 10, "bold"),
             padding=5,
             # style="Count.TLabel",  # Usa estilo customizado
             anchor=CENTER
         )
         self._remaining_count_label.pack(
-            side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
+            side=tk.LEFT, padx=5, pady=0, fill=tk.X, expand=True)
 
     def _create_registered_table(self):
         """ Cria a tabela (SimpleTreeView) para exibir os alunos registrados. """
@@ -1078,7 +1102,7 @@ class StatusRegisteredPanel(ttk.Frame):
             padding=(5, 5)
         )
         # Posiciona abaixo dos contadores
-        reg_frame.grid(row=1, column=0, sticky="nsew")
+        reg_frame.grid(row=0, column=0, sticky="nsew")
         reg_frame.rowconfigure(0, weight=1)  # Tabela expande
         reg_frame.columnconfigure(0, weight=1)
 
@@ -1349,7 +1373,7 @@ class RegistrationApp(tk.Tk):
     def _configure_style(self):
         """ Configura o tema ttkbootstrap e estilos customizados. """
         try:
-            self.style = ttk.Style(theme="litera")
+            self.style = ttk.Style(theme="minty")
             default_font = ("Helvetica", 10)
             heading_font = ("Helvetica", 10, "bold")
             label_font = ("Helvetica", 11, "bold")
@@ -1394,29 +1418,29 @@ class RegistrationApp(tk.Tk):
         ttk.Button(
             buttons_frame, text=UI_TEXTS.get(
                 "export_end_button", "💾 Exportar & Encerrar"),
-            command=self.export_and_end_session, bootstyle=DANGER
+            command=self.export_and_end_session, bootstyle="light"
         ).pack(side=RIGHT, padx=(10, 0))
         ttk.Button(
             buttons_frame, text=UI_TEXTS.get(
                 "sync_served_button", "📤 Sync Servidos"),
-            command=self.sync_session_with_spreadsheet, bootstyle="success-outline"
+            command=self.sync_session_with_spreadsheet, bootstyle="light"
         ).pack(side=RIGHT, padx=3)
         ttk.Button(
             buttons_frame, text=UI_TEXTS.get(
                 "sync_master_button", "🔄 Sync Cadastros"),
-            command=self._sync_master_data, bootstyle="warning-outline"
+            command=self._sync_master_data, bootstyle="light"
         ).pack(side=RIGHT, padx=3)
         ttk.Separator(buttons_frame, orient=VERTICAL).pack(
             side=RIGHT, padx=8, fill="y", pady=3)
         ttk.Button(
             buttons_frame, text=UI_TEXTS.get(
                 "filter_classes_button", "📊 Filtrar Turmas"),
-            command=self._open_class_filter_dialog, bootstyle="info-outline"
+            command=self._open_class_filter_dialog, bootstyle="light"
         ).pack(side=RIGHT, padx=3)
         ttk.Button(
             buttons_frame, text=UI_TEXTS.get(
                 "change_session_button", "⚙️ Alterar Sessão"),
-            command=self._open_session_dialog, bootstyle="secondary-outline"
+            command=self._open_session_dialog, bootstyle="light"
         ).pack(side=RIGHT, padx=3)
 
     def _create_main_panels(self):
@@ -1424,7 +1448,7 @@ class RegistrationApp(tk.Tk):
         self._main_paned_window = ttk.PanedWindow(
             self, orient=HORIZONTAL, bootstyle="light")
         self._main_paned_window.grid(
-            row=1, column=0, sticky="nsew", padx=10, pady=(0, 5))
+            row=1, column=0, sticky="nsew", padx=10, pady=(0, 0))
 
         # Instancia o painel esquerdo
         self._action_panel = ActionSearchPanel(

@@ -86,7 +86,7 @@ EXPORT_HEADER: List[str] = [
 # --- Textos da Interface do Usuário (Centralizados) ---
 UI_TEXTS: Dict[str, str] = {
     # Títulos de Janelas e Diálogos
-    "app_title": "RU IFSP - Registro de Refeições",
+    "app_title": "Registro de Refeições",
     "session_dialog_title": "Selecionar ou Criar Sessão",
     "class_filter_dialog_title": "📊 Filtrar Turmas",
     "critical_error_title": "Erro Crítico",
@@ -226,5 +226,29 @@ UI_TEXTS: Dict[str, str] = {
     "log_dpi_set_shcore": "Reconhecimento de DPI definido (shcore).",
     "log_dpi_set_user32": "Reconhecimento de DPI definido (user32).",
     "log_dpi_set_warn": "Não foi possível definir reconhecimento de DPI (APIs não encontradas).",
-    "log_default_snacks_created": "Arquivo de lanches padrão criado: '{path}'."
+    "log_default_snacks_created": "Arquivo de lanches padrão criado: '{path}'.",
+
+    "app_title_active_session": "Reg: {meal} - {date} {time} [ID:{id}]",
+    "app_title_no_session": "Refeições Reg [Sem Sessão]",
+    "confirm_sync_title": "Confirmar",
+    "database_error_title": "Erro de Banco de Dados",
+    "error_applying_filters": "Falha ao aplicar filtros.",
+    "error_display_results": "Não foi possível exibir os resultados.",
+    "error_fetching_classes": "Não foi possível buscar as turmas.",
+    "error_getting_row_data": "Erro ao obter dados da linha para remoção.",
+    "error_invalid_student_data": "Dados do aluno selecionado estão incompletos ou inválidos.",
+    "error_loading_registered": "Não foi possível carregar alunos registrados.",
+    "error_no_active_session": "Erro: Nenhuma Sessão Ativa",
+    "error_no_valid_data_export": "Nenhum dado válido para exportar.",
+    "error_processing_row_data": "Erro ao processar dados da linha selecionada.",
+    "error_title": "Erro",
+    "session_manager_access": "Acesso ao Session Manager",
+    "session_manager_init": "Gerenciador de Sessão",
+    "status_syncing_master": "Sincronizando cadastros...",
+    "status_syncing_reservations": "Sincronizando reservas...",
+    "status_syncing_served": "Sincronizando servidos...",
+    "task_name_sync_master": "Sincronização de Cadastros",
+    "task_name_sync_served": "Sincronização de Servidos",
+    "ui_construction": "Construção da UI",
+    "ui_error_title": "Erro de UI"
 }
