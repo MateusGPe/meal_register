@@ -1,468 +1,277 @@
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------------
+# File: registro/control/session_manage.py (Fachada do Controlador de Sessão)
+# ----------------------------------------------------------------------------
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2024-2025 Mateus G Pereira <mateus.pereira@ifsp.edu.br>
-
 """
-Provides a class for managing meal serving sessions, including loading
-reserves, tracking served students, and exporting session data.
+Ponto de entrada principal para a camada de controle relacionada à gestão
+de sessões de refeição. Atua como uma fachada (Facade), coordenando as ações
+entre `SessionMetadataManager` (metadados da sessão, DB, estado) e
+`MealSessionHandler` (lógica da refeição ativa, elegibilidade, consumo).
 """
+import logging
+from typing import Any, Dict, List, Optional, Tuple, Set
 
-import json
-import os
-import re
-import sys
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
-
-import xlsxwriter
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
+# Importações locais dos componentes de controle
 from registro.control.generic_crud import CRUD
-from registro.control.reserves import reserve_snacks
-from registro.control.sync_session import SpreadSheet
-from registro.control.utils import (SESSION, get_documments_path,
-                                    load_json, save_json)
-from registro.model.tables import Base, Reserve, Session, Students
+from registro.control.meal_session_handler import MealSessionHandler
+from registro.control.session_metadata_manager import SessionMetadataManager
+from registro.model.tables import Group, Reserve, Session, Student  # Modelos DB
+from registro.control.constants import NewSessionData  # Tipagem
 
-TRANSLATE_DICT = str.maketrans("0123456789Xx", "abcdefghijkk")
-REMOVE_IQ = re.compile(r"[Ii][Qq]\d0+")
-
-INTEGRATE_CLASSES = [
-    "1º A - MAC",
-    "2º A - MAC",
-    "1º A - MEC",
-    "1º B - MEC",
-    "2º A - MEC",
-    "2º B - MEC",
-    "3º A - MEC",
-    "3º B - MEC",
-]
-OTHERS = ["SEM RESERVA"]
-
-ANYTHING = INTEGRATE_CLASSES + OTHERS
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
     """
-    Manages meal serving sessions, including loading reserves, tracking served
-    students, and exporting session data to a spreadsheet.
+    Coordena as operações relacionadas à sessão de refeição, delegando
+    tarefas para os gerenciadores específicos de metadados e lógica de refeição.
+
+    Fornece uma interface unificada para a camada de Visão (GUI).
     """
 
-    def __init__(self, fn):
+    def __init__(self):
         """
-        Initializes the SessionManager.
+        Inicializa o SessionManager, criando instâncias dos gerenciadores
+        de metadados e de lógica de refeição, e também instâncias CRUD
+        necessárias.
 
-        Args:
-            fn (str): The filename for storing session information.
+        Raises:
+            RuntimeError: Se a inicialização de `SessionMetadataManager` falhar
+                          (geralmente devido a erro de banco de dados).
         """
-        self.filename = fn
-        self.engine = create_engine("sqlite:///./config/registro.db")
-        Base.metadata.create_all(self.engine)
-
-        session_local = sessionmaker(
-            autocommit=False, autoflush=False, bind=self.engine)
-
-        self.database_session = session_local()
-
-        self.student_crud: CRUD[Students] = CRUD[Students](
-            self.database_session, Students)
-
-        self.reserve_crud: CRUD[Reserve] = CRUD[Reserve](
-            self.database_session, Reserve)
-
-        self.session_crud: CRUD[Session] = CRUD[Session](
-            self.database_session, Session)
-
-        self._session_id: int = 0
-        self._periodo = None
-        self._hora = None
-        self._turmas = None
-        self._date = None
-        self._meal_type = None
-
-        self._served_meals = None
-        self._session_info: Optional[dict] = None
-
-        self._current_session_pronts: Set = set()
-
+        logger.info("Inicializando SessionManager...")
         try:
-            self._spread: SpreadSheet = SpreadSheet()
-        except Exception:  # pylint: disable=broad-except
-            sys.exit(1)
-
-        self._all_reserves: List = []
-        self._filtered_discentes: List = []
-        self._xls_saved: str = ""
-        self._pront_to_reserve_id_map: Dict = {}
-        self._snacks: bool = False
-
-    def get_spreadsheet(self):
-        """Returns the SpreadSheet object."""
-        return self._spread
-
-    def get_date(self):
-        """Returns the current session date."""
-        return self._date
-
-    def get_meal_type(self):
-        """Returns the current session meal type."""
-        return self._meal_type
-
-    def load_reserves(self):
-        """
-        Loads the reserves for the current session from the database.
-
-        Returns:
-            Optional[List[Dict]]: A list of student reserve information or None if
-                                   the session info cannot be loaded.
-        """
-        if not self._session_info and not self.load_session():
-            return None
-
-        is_snack = self._meal_type.lower() == "lanche"
-
-        reserves = self.reserve_crud.read_filtered(
-            data=self._date, snacks=is_snack, session_id=self._session_id
-        )
-
-        self._all_reserves = []
-        for reserve in reserves:
-            student = self.student_crud.read_one(reserve.student_id)
-            if student:
-                self._all_reserves.append(
-                    {
-                        "Pront": student.pront,
-                        "Nome": student.nome,
-                        "Turma": student.turma,
-                        "Prato": reserve.prato,
-                        "Data": reserve.data,
-                        "id": student.translate_id,
-                        "Hora": reserve.registro_time,
-                        "reserve_id": reserve.id,
-                        "student_id": student.id,
-                    }
-                )
-                self._pront_to_reserve_id_map[student.pront] = reserve.id
-
-        if self._all_reserves is None:
-            return None
-
-        return self.filter_students()
-
-    def get_served_registers(self):
-        """Returns the set of PRONTs of students served in the current session."""
-        return self._current_session_pronts
-
-    def filter_students(self):
-        """
-        Filters the loaded reserves based on the selected classes for the session.
-
-        Returns:
-            List[Dict]: A list of student reserve information filtered by class.
-        """
-        if self._all_reserves is None or self._turmas is None:
-            print(
-                "Error: Required data (self._all_reserves) is not loaded.",
-                file=sys.stderr,
-            )
-            return []
-
-        selected_turmas = set(self._turmas)
-        self._filtered_discentes = []
-
-        reserved = 'SEM RESERVA' not in selected_turmas
-        selected_turmas.discard("SEM RESERVA")
-
-        for student_data in self._all_reserves:
-            turma = student_data.get("Turma")
-            meal = student_data.get('Prato')
-
-            if meal.upper() == "SEM RESERVA" and reserved:
-                continue
-
-            if turma in selected_turmas:
-                self._filtered_discentes.append(student_data)
-
-        return self._filtered_discentes
-
-    def create_student(self, student):
-        """
-        Marks a student as served in the current session.
-
-        Args:
-            student (Tuple): A tuple containing student information, where the
-                             first element is the student's PRONT.
-
-        Returns:
-            bool: True if the student was successfully marked as served, False otherwise.
-        """
-        if student[0] in self._current_session_pronts:
-            return False
-
-        reserve_id = self._pront_to_reserve_id_map[student[0]]
-
-        self.reserve_crud.update(
-            reserve_id,
-            {
-                "registro_time": datetime.now().strftime("%H:%M:%S"),
-                "consumed": True,
-            },
-        )
-
-        self._served_meals.append(student)
-        self._current_session_pronts.add(student[0])
-        return True
-
-    def delete_student(self, student):
-        """
-        Unmarks a student as served in the current session.
-
-        Args:
-            student (Tuple): A tuple containing student information, where the
-                             first element is the student's PRONT.
-
-        Returns:
-            bool: True if the student was successfully unmarked as served, False otherwise.
-        """
-        if student[0] not in self._current_session_pronts:
-            return False
-        reserve_id = self._pront_to_reserve_id_map[student[0]]
-
-        self.reserve_crud.update(
-            reserve_id,
-            {
-                "consumed": False,
-            },
-        )
-
-        self._served_meals.remove(student)
-        self._current_session_pronts.remove(student[0])
-        return True
-
-    def load_session(self) -> Optional[dict]:
-        """
-        Loads session information from the session file.
-
-        Returns:
-            Optional[dict]: A dictionary containing the loaded session information
-                             or None if the file cannot be loaded or the session ID
-                             is invalid.
-        """
-        self._session_info = load_json(self.filename)
-
-        if self._session_info is None:
-            return None
-
-        self._session_id = self._session_info.get("session_id", -1)
-
-        if self._session_id == -1:
-            self._session_id = None
-            return None
-
-        session_ = self.session_crud.read_one(self._session_id)
-
-        if not session_:
-            return None
-
-        self._date = session_.data
-        self._snacks = session_.refeicao == "lanche"
-        self._update_session(session_, [])
-        return self._session_info
-
-    def _update_session(self, session_: Session, discentes_: List[Any]):
-        """
-        Updates the SessionManager's attributes based on the provided Session object.
-
-        Args:
-            session_ (Session): The Session object from the database.
-            discentes_ (List[Any]): A list of served students (not currently used).
-        """
-        self._meal_type = session_.refeicao
-        self._periodo = session_.periodo
-        self._date = session_.data
-        self._hora = session_.hora
-        self._turmas = json.loads(session_.turmas)
-        self._served_meals = discentes_
-
-    def get_sheet_path(self):
-        """Returns the path to the exported spreadsheet."""
-        return self._xls_saved
-
-    def get_session_students(self):
-        """Returns the list of filtered students for the current session."""
-        return self._filtered_discentes
-
-    def export_sheet(self):
-        """
-        Exports the served students data to an Excel spreadsheet.
-
-        Returns:
-            bool: True if the export was successful, False otherwise.
-        """
-        self.save_session()
-        try:
-            name = f"{self._meal_type} {str(self._date.replace(
-                '/', '-'))} {str(self._hora.replace(':', '.'))}"
-
-            self._xls_saved = os.path.join(get_documments_path(), name+'.xlsx')
-
-            workbook = xlsxwriter.Workbook(self._xls_saved)
-            worksheet = workbook.add_worksheet(name)
-
-            header = ["Matrícula", "Data", "Nome", "Turma", "Refeição", "Hora"]
-            row = 0
-
-            for hcol, item in enumerate(header):
-                worksheet.write(row, hcol, item)
-
-            for item in self._served_meals:
-                row += 1
-                worksheet.write(row, 0, item[0])
-                worksheet.write(row, 1, self._date)
-                worksheet.write(row, 2, item[1])
-                worksheet.write(row, 3, item[2])
-                worksheet.write(row, 4, item[4])
-                worksheet.write(row, 5, item[3])
-
-        except (IOError, ValueError) as e:
-            print(f"Error: {e}")
-            return False
-        workbook.close()
-
-        return True
-
-    def save_session(self) -> bool:
-        """Saves the current session information to the session file."""
-        return save_json(self.filename, self._session_info)
-
-    def get_served_students(self):
-        """
-        Retrieves the list of students marked as served in the current session
-        from the database.
-        """
-        reserves = self.reserve_crud.read_filtered(
-            snacks=self._snacks,
-            data=self._date,
-            session_id=self._session_id,
-            consumed=True,
-        )
-
-        self._served_meals = [
-            (r.student.pront, r.student.nome,
-             r.student.turma, r.registro_time, r.prato)
-            for r in reserves
-        ]
-        self._current_session_pronts: Set = {r.student.pront for r in reserves}
-
-        return self._served_meals
-
-    def get_session_classes(self):
-        """Returns the list of classes selected for the current session."""
-        return self._turmas or []
-
-    def set_students(self, served_update):
-        """
-        Updates the list of served students for the current session.
-
-        Args:
-            served_update (List[Tuple]): A list of tuples, where each tuple
-                                         contains information about a served student.
-        """
-        self._current_session_pronts: Set = {
-            i[0] for i in self._served_meals}
-
-        pront_list: Set = {i[0] for i in served_update}
-
-        reserves_to_update = {
-            self._pront_to_reserve_id_map[p]
-            for p in self._current_session_pronts.difference(pront_list)
-        }
-
-        for reserve_id in reserves_to_update:
-            self.reserve_crud.update(
-                reserve_id,
-                {
-                    "consumed": False,
-                },
+            # Cria o gerenciador de metadados (que inicializa o DB)
+            self.metadata_manager = SessionMetadataManager()
+            # Cria o manipulador da lógica de refeição, passando a sessão DB
+            self.meal_handler = MealSessionHandler(
+                self.metadata_manager.database_session
             )
 
-        self._served_meals = served_update
-        self._current_session_pronts = pront_list
-        self.load_reserves()
-
-    def new_session(self, session: SESSION):
-        """
-        Creates a new serving session.
-
-        Args:
-            session (SessionDict): A dictionary containing the new session's information.
-
-        Returns:
-            bool: True if the session was created successfully, False otherwise.
-        """
-        refeicao = session["refeição"].lower()
-        data = session["data"]
-        self._date = data
-
-        self._snacks = False
-        reserves = self.reserve_crud.read_filtered(snacks=False, data=data)
-        if refeicao == "almoço":
-            if len(reserves) == 0:
-                return False
-        elif refeicao == "lanche":
-            self._snacks = True
-            reserves = self.reserve_crud.read_filtered(
-                snacks=True, data=data, session_id=None
+            # Cria instâncias CRUD para acesso direto (se necessário) ou para
+            # passar para outras funções (ex: sync)
+            # A sessão DB é a mesma gerenciada pelo metadata_manager
+            self.student_crud: CRUD[Student] = CRUD[Student](
+                self.metadata_manager.database_session, Student
             )
-            if len(reserves) == 0:
-                reserve_snacks(self.student_crud,
-                               self.reserve_crud, data, session['lanche'])
-                reserves = self.reserve_crud.read_filtered(
-                    snacks=True, data=data, session_id=None
-                )
+            self.reserve_crud: CRUD[Reserve] = CRUD[Reserve](
+                self.metadata_manager.database_session, Reserve
+            )
+            self.turma_crud: CRUD[Group] = CRUD[Group](
+                self.metadata_manager.database_session, Group
+            )
+            self.session_crud: CRUD[Session] = CRUD[Session](
+                self.metadata_manager.database_session, Session
+            )
 
-        session_ = self.session_crud.create(
-            {
-                "refeicao": refeicao,
-                "periodo": session["período"],
-                "data": session["data"],
-                "hora": session["hora"],
-                "turmas": json.dumps(session["turmas"]),
-            }
-        )
-        self._session_id = session_.id
+            logger.info("SessionManager inicializado com sucesso.")
+        except Exception as e:
+            # Captura qualquer erro durante a inicialização (principalmente do DB)
+            logger.critical("Falha crítica durante a inicialização do SessionManager.", exc_info=True)
+            # Relança o erro para que a aplicação principal possa tratá-lo
+            raise RuntimeError(f"Falha ao inicializar SessionManager: {e}") from e
 
-        reserves_to_update = []
+    # --- Métodos Delegados ao SessionMetadataManager ---
 
-        for reserve in reserves:
-            reserves_to_update.append(
-                {"id": reserve.id, "session_id": session_.id})
+    def get_spreadsheet(self) -> Optional[Any]:
+        """ Retorna a instância configurada do SpreadSheet (gspread wrapper). """
+        return self.metadata_manager.get_spreadsheet()
 
-        if reserves_to_update:
-            self.reserve_crud.bulk_update(reserves_to_update)
+    def get_date(self) -> Optional[str]:
+        """ Retorna a data da sessão ativa (YYYY-MM-DD). """
+        return self.metadata_manager.get_date()
 
-        self._update_session(session_, [])
-        self._session_info = {"session_id": session_.id}
-        self.save_session()
-        return True
+    def get_meal_type(self) -> Optional[str]:
+        """ Retorna o tipo de refeição da sessão ativa ('lanche' ou 'almoço'). """
+        return self.metadata_manager.get_meal_type()
 
-    def set_session_classes(self, classes):
+    def get_time(self) -> Optional[str]:
+        """ Retorna a hora da sessão ativa (HH:MM). """
+        return self.metadata_manager.get_time()
+
+    def save_session_state(self) -> bool:
+        """ Salva o ID da sessão ativa no arquivo de estado. """
+        return self.metadata_manager.save_session_state()
+
+    def get_session_classes(self) -> List[str]:
+        """ Retorna a lista de nomes das turmas selecionadas para a sessão ativa. """
+        return self.metadata_manager.get_session_classes()
+
+    def get_session_info(self) -> Optional[Tuple[int, str, str, List[str]]]:
+        """ Retorna as informações completas da sessão ativa (id, data, tipo, turmas). """
+        return self.metadata_manager.get_session_info()
+
+    def load_session(self, session_id: Optional[int] = None) -> Optional[dict]:
         """
-        Sets the classes for the current session.
+        Carrega uma sessão (por ID ou do estado salvo) e atualiza o contexto
+        do MealSessionHandler.
 
         Args:
-            classes (List[str]): A list of class names.
+            session_id: O ID da sessão a carregar, ou None para usar o estado salvo.
 
         Returns:
-            Optional[List[str]]: The updated list of classes or None if the
-                                  session cannot be found.
+            Dicionário `{"session_id": id}` se carregado com sucesso, None caso contrário.
         """
-        session_ = self.session_crud.read_one(self._session_id)
+        acao = f"Carregando sessão por ID: {session_id}" if session_id else "Carregando sessão do arquivo de estado"
+        logger.info(acao)
 
-        if not session_:
+        # Delega o carregamento para o metadata_manager
+        session_info_dict = self.metadata_manager.load_session(session_id)
+        # Obtém os detalhes completos da sessão recém-carregada (se houver)
+        session_details_tuple = self.metadata_manager.get_session_info()
+
+        # Atualiza o contexto do MealSessionHandler com os detalhes carregados
+        if session_info_dict and session_details_tuple:
+            logger.info(f"Sessão {session_details_tuple[0]} carregada. Atualizando contexto do MealHandler.")
+            self.meal_handler.set_session_info(*session_details_tuple)
+        elif session_info_dict and not session_details_tuple:
+            # Caso raro: estado carregado mas detalhes não recuperados do DB?
+            logger.error("Estado da sessão carregado, mas falha ao obter detalhes da sessão para MealHandler!")
+            # Limpa o contexto do MealHandler
+            self.meal_handler.set_session_info(None, None, None, None)
+        else:
+            # Nenhuma sessão carregada
+            logger.warning("Nenhuma sessão pôde ser carregada.")
+            # Limpa o contexto do MealHandler
+            self.meal_handler.set_session_info(None, None, None, None)
+
+        return session_info_dict  # Retorna o resultado do carregamento
+
+    def set_session_classes(self, classes: List[str]) -> Optional[List[str]]:
+        """
+        Define as turmas para a sessão ativa e atualiza o contexto do MealSessionHandler.
+
+        Args:
+            classes: Lista de nomes das turmas (prefixo '#' indica sem reserva).
+
+        Returns:
+            A lista de turmas atualizada se sucesso, None caso contrário.
+        """
+        logger.info(f"Tentando definir turmas da sessão para: {classes}")
+
+        # Delega a atualização para o metadata_manager
+        updated_classes = self.metadata_manager.set_session_classes(classes)
+        # Obtém os detalhes atualizados da sessão
+        session_details_tuple = self.metadata_manager.get_session_info()
+
+        # Se a atualização no DB foi bem-sucedida e temos os detalhes
+        if updated_classes is not None and session_details_tuple:
+            # Atualiza o contexto do MealHandler
+            self.meal_handler.set_session_info(*session_details_tuple)
+            logger.info("Turmas da sessão atualizadas e contexto do MealHandler refrescado.")
+        elif updated_classes is not None and not session_details_tuple:
+            # Caso raro: atualizou DB mas não conseguiu ler de volta?
+            logger.error("Turmas da sessão atualizadas no DB, mas falha ao refrescar contexto do MealHandler!")
+            # Retorna None para indicar problema
             return None
+        else:
+            # Falha ao atualizar no metadata_manager (erro já logado lá)
+            logger.error("Falha ao atualizar turmas da sessão via SessionMetadataManager.")
+            # updated_classes já será None neste caso
 
-        session_.turmas = json.dumps(classes)
-        self.session_crud.update(session_.id, {"turmas": session_.turmas})
-        self._turmas = classes
-        return self._turmas
+        return updated_classes  # Retorna a lista (ou None se falhou)
+
+    def new_session(self, session_data: NewSessionData) -> bool:
+        """
+        Cria uma nova sessão e atualiza o contexto do MealSessionHandler.
+
+        Args:
+            session_data: Dicionário com dados da nova sessão.
+
+        Returns:
+            True se a criação for bem-sucedida, False caso contrário.
+        """
+        logger.info(f"Tentando criar nova sessão com dados: {session_data}")
+
+        # Delega a criação para o metadata_manager
+        success = self.metadata_manager.new_session(session_data)
+        # Obtém os detalhes da sessão recém-criada (se sucesso)
+        session_details_tuple = self.metadata_manager.get_session_info()
+
+        # Se a criação foi bem-sucedida e temos os detalhes
+        if success and session_details_tuple:
+            # Atualiza o contexto do MealHandler
+            self.meal_handler.set_session_info(*session_details_tuple)
+            logger.info(f"Nova sessão {session_details_tuple[0]} criada e contexto do MealHandler definido.")
+        elif success and not session_details_tuple:
+            # Caso raro: criou no DB mas não conseguiu ler de volta?
+            logger.error("Nova sessão criada no DB, mas falha ao obter detalhes para atualizar MealHandler!")
+            # Retorna False porque o estado está inconsistente
+            return False
+        elif not success:
+            # Falha na criação (erro já logado pelo metadata_manager)
+            logger.error("Falha ao criar nova sessão via SessionMetadataManager.")
+            # success já será False
+
+        return success
+
+    # --- Métodos Delegados ao MealSessionHandler ---
+
+    def get_served_pronts(self) -> Set[str]:
+        """ Retorna o conjunto de prontuários já servidos na sessão ativa. """
+        return self.meal_handler.get_served_pronts()
+
+    def filter_eligible_students(self) -> Optional[List[Dict[str, Any]]]:
+        """ Filtra e retorna a lista de alunos elegíveis para a sessão ativa. """
+        return self.meal_handler.filter_eligible_students()
+
+    def record_consumption(self, student_info: Tuple[str, str, str, str, str]) -> bool:
+        """ Registra o consumo de um aluno na sessão ativa. """
+        return self.meal_handler.record_consumption(student_info)
+
+    def delete_consumption(self, student_info: Tuple[str, str, str, str, str]) -> bool:
+        """ Remove o registro de consumo de um aluno na sessão ativa. """
+        return self.meal_handler.delete_consumption(student_info)
+
+    def get_served_students_details(self) -> List[Tuple[str, str, str, str, str]]:
+        """ Retorna detalhes dos alunos já servidos na sessão ativa. """
+        return self.meal_handler.get_served_students_details()
+
+    def get_eligible_students(self) -> List[Dict[str, Any]]:
+        """ Retorna a lista (cacheada ou recém-filtrada) de alunos elegíveis. """
+        return self.meal_handler.get_eligible_students()
+
+    def sync_consumption_state(self, served_update: List[Tuple[str, str, str, str, str]]):
+        """
+        Sincroniza o estado de consumo no DB com um snapshot externo.
+
+        Garante que o MealSessionHandler esteja com o contexto da sessão
+        correta antes de delegar a sincronização.
+
+        Args:
+            served_update: Lista de tuplas representando o estado desejado de alunos servidos.
+        """
+        logger.debug(f"Iniciando sincronização de estado de consumo com {len(served_update)} registros alvo.")
+        # Obtém a sessão ativa atual do metadata_manager
+        session_details_tuple = self.metadata_manager.get_session_info()
+
+        if session_details_tuple:
+            active_session_id = session_details_tuple[0]
+            # Verifica se o ID da sessão no MealHandler corresponde ao ID ativo
+            current_handler_sid = self.meal_handler._session_id
+            if current_handler_sid != active_session_id:
+                # Se diferente, força a atualização do contexto do MealHandler
+                logger.warning(
+                    f"Contexto de sessão do MealHandler ({current_handler_sid}) difere da sessão ativa ({active_session_id}). "
+                    f"Forçando atualização antes de sync_consumption_state.")
+                self.meal_handler.set_session_info(*session_details_tuple)
+
+            # Delega a sincronização para o MealSessionHandler
+            self.meal_handler.sync_consumption_state(served_update)
+        else:
+            # Não há sessão ativa, não pode sincronizar
+            logger.error("Não é possível sincronizar estado de consumo: Informação da sessão ativa indisponível.")
+
+    # --- Gerenciamento de Recursos ---
+
+    def close_resources(self):
+        """ Fecha recursos, principalmente a sessão do banco de dados. """
+        logger.info("Fechando recursos do SessionManager (delegando para metadata_manager)...")
+        if self.metadata_manager:
+            # Delega o fechamento da sessão DB para o metadata_manager
+            self.metadata_manager.close_db_session()
+        else:
+            logger.warning("MetadataManager não inicializado, não é possível fechar recursos.")
+        logger.info("Recursos do SessionManager fechados.")

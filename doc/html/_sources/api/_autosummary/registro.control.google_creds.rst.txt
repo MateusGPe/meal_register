@@ -1,0 +1,6 @@
+﻿registro.control.google\_creds
+==============================
+
+.. currentmodule:: registro.control
+
+.. automodule:: google_creds

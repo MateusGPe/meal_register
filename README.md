@@ -81,7 +81,7 @@ Certifique-se de que esses arquivos existam no diretório `./config` ou ajuste o
     registrar
     ```
 
-3.  Upon starting, if no previous session is found, a "Nova seção" (New Session) dialog will appear. / Ao iniciar, se nenhuma sessão anterior for encontrada, uma caixa de diálogo "Nova seção" aparecerá.
+3.  Upon starting, if no previous session is found, a "Nova sessão" (New Session) dialog will appear. / Ao iniciar, se nenhuma sessão anterior for encontrada, uma caixa de diálogo "Nova sessão" aparecerá.
 4.  In the dialog, configure the meal type, time, date, period, and select the classes for the session. / Na caixa de diálogo, configure o tipo de refeição, hora, data, período e selecione as turmas para a sessão.
 5.  Click "Ok" to start the session. / Clique em "Ok" para iniciar a sessão.
 6.  In the main window, use the "Registrar" tab to search for students by typing their registration number or name. / Na janela principal, use a aba "Registrar" para pesquisar alunos digitando seu número de matrícula ou nome.
