@@ -1530,7 +1530,7 @@ class RegistrationApp(tk.Tk):
         super().__init__()
         self.title(title)
         self.protocol("WM_DELETE_WINDOW", self.on_close_app)  # Ação ao fechar
-        self.minsize(768, 432)  # Tamanho inicial da janela
+        self.minsize(1152, 648)  # Tamanho mínimo da janela
 
         try:
             self._session_manager: SessionManager = SessionManager()
@@ -1856,9 +1856,10 @@ class RegistrationApp(tk.Tk):
 
         # Formata data para exibição DD/MM/YYYY
         try:
-            display_date = datetime.strptime(date_str_backend, "%Y-%m-%d").strftime(
-                "%d/%m/%Y"
-            )
+            #display_date = datetime.strptime(date_str_backend, "%Y-%m-%d").strftime(
+            #    "%d/%m/%Y"
+            #)
+            display_date = date_str_backend
         except (ValueError, TypeError):
             logger.warning(
                 "Não foi possível formatar data %s para exibição.", date_str_backend
@@ -2224,7 +2225,12 @@ class RegistrationApp(tk.Tk):
     def _remove_session_state_file(self) -> bool:
         """Remove o arquivo session.json."""
         try:
-            Path(SESSION_PATH).unlink(missing_ok=True)
+            self._session_manager.metadata_manager.clear_session_attributes()
+            session_path = Path(SESSION_PATH)
+            session_path.unlink(missing_ok=True)
+            if session_path.exists():
+                logger.error("Arquivo de estado não removido: %s", session_path)
+                return False
             logger.info("Arquivo de estado tratado: %s", SESSION_PATH)
             return True
         except Exception as e:
@@ -2276,7 +2282,7 @@ def main():
         )
         stream_h = logging.StreamHandler(sys.stdout)
         logging.basicConfig(
-            level=logging.INFO,
+            level=logging.DEBUG,
             format=log_fmt,
             datefmt=log_datefmt,
             handlers=[file_h, stream_h],

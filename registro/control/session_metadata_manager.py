@@ -178,7 +178,7 @@ class SessionMetadataManager:
             else:
                 logger.info('Nenhum ID de sessão válido encontrado em %s. Limpando sessão ativa.',
                             source)
-                self._clear_session_attributes()
+                self.clear_session_attributes()
                 # Limpa o arquivo de estado se ele continha dados inválidos ou vazios
                 if session_state is not None:
                     self._save_state_to_file(None)  # Salva None no arquivo
@@ -186,7 +186,7 @@ class SessionMetadataManager:
 
         # Se não conseguimos determinar um ID alvo, não há sessão
         if target_session_id is None:
-            self._clear_session_attributes()
+            self.clear_session_attributes()
             return None
 
         # --- Busca a sessão no banco de dados ---
@@ -195,7 +195,7 @@ class SessionMetadataManager:
             session_obj = self.session_crud.read_one(target_session_id)
         except Exception as e:
             logger.exception('Erro ao ler sessão ID %s do banco de dados: %s', target_session_id, e)
-            self._clear_session_attributes()
+            self.clear_session_attributes()
             self._save_state_to_file(None)  # Limpa o estado se o DB falhar
             return None
 
@@ -217,13 +217,13 @@ class SessionMetadataManager:
         else:
             logger.warning('ID de sessão %s (de %s) não encontrado no banco de dados.',
                            target_session_id, source)
-            self._clear_session_attributes()
+            self.clear_session_attributes()
             # Limpa o arquivo de estado se o ID era de lá e inválido
             if source.startswith("arquivo de estado"):
                 self._save_state_to_file(None)
             return None
 
-    def _clear_session_attributes(self):
+    def clear_session_attributes(self):
         """ Limpa os atributos internos que definem a sessão ativa. """
         logger.debug('Limpando atributos internos da sessão.')
         self._session_id = None

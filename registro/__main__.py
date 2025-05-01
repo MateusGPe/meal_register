@@ -16,7 +16,7 @@ import logging
 # Configuração inicial e básica do logging (antes de importar a GUI)
 # Isso garante que logs de importação ou inicialização precoce sejam capturados.
 # A configuração mais completa (com arquivo) será feita dentro de gui.main().
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)  # Logger para este módulo (__main__)
 
