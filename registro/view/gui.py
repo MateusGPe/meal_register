@@ -2282,7 +2282,7 @@ def main():
         )
         stream_h = logging.StreamHandler(sys.stdout)
         logging.basicConfig(
-            level=logging.DEBUG,
+            level=logging.INFO,
             format=log_fmt,
             datefmt=log_datefmt,
             handlers=[file_h, stream_h],
