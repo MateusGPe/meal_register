@@ -28,4 +28,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-registrar = "registro.view.gui:main"
+registrar = "registro.__main__:run_application"

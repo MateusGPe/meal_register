@@ -12,7 +12,7 @@ para cada turma selecionada).
 import logging
 import tkinter as tk
 from tkinter import BOTH, CENTER, EW, HORIZONTAL, NSEW, YES, messagebox
-from typing import List, Tuple, Callable, TYPE_CHECKING
+from typing import List, Tuple, Callable, TYPE_CHECKING, Union
 
 import ttkbootstrap as ttk
 
@@ -24,7 +24,7 @@ from registro.control.constants import UI_TEXTS  # Centralização de textos
 # Type checking para evitar importações circulares
 if TYPE_CHECKING:
     from registro.control.session_manage import SessionManager
-    from registro.view.gui import RegistrationApp  # Classe principal da GUI
+    from registro.view.registration_app import RegistrationApp  # Classe principal da GUI
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +65,13 @@ def create_dialog_class_filter_section(
     ttk.Label(
         inner_frame,
         text=UI_TEXTS.get("show_with_reservation", "Mostrar COM Reserva"),
-        bootstyle="success",# type: ignore
+        bootstyle="success",  # type: ignore
         anchor=CENTER,
     ).grid(row=0, column=0, sticky=EW, padx=5, pady=(0, 5))
     ttk.Label(
         inner_frame,
         text=UI_TEXTS.get("show_without_reservation", "Mostrar SEM Reserva (#)"),
-        bootstyle="warning",# type: ignore
+        bootstyle="warning",  # type: ignore
         anchor=CENTER,
     ).grid(row=0, column=1, sticky=EW, padx=5, pady=(0, 5))
 
@@ -129,7 +129,7 @@ class ClassFilterDialog(tk.Toplevel):
 
     def __init__(
         self,
-        parent: "RegistrationApp",
+        parent: Union["RegistrationApp", None],
         session_manager: "SessionManager",
         apply_callback: Callable[[List[str]], None],
     ):
@@ -209,7 +209,7 @@ class ClassFilterDialog(tk.Toplevel):
             button_frame,
             text=UI_TEXTS.get("clear_all_button", "⚪ Limpar Todos"),
             command=self._clear_all,
-            bootstyle="secondary-outline",# type: ignore
+            bootstyle="secondary-outline",  # type: ignore
         ).grid(row=0, column=0, padx=3, pady=5, sticky=EW)
 
         # Botão Selecionar Todos
@@ -217,7 +217,7 @@ class ClassFilterDialog(tk.Toplevel):
             button_frame,
             text=UI_TEXTS.get("select_all_button", "✅ Selecionar Todos"),
             command=self._select_all,
-            bootstyle="secondary-outline",# type: ignore
+            bootstyle="secondary-outline",  # type: ignore
         ).grid(row=0, column=1, padx=3, pady=5, sticky=EW)
 
         # Botão Cancelar
@@ -225,7 +225,7 @@ class ClassFilterDialog(tk.Toplevel):
             button_frame,
             text=UI_TEXTS.get("cancel_button", "❌ Cancelar"),
             command=self._on_cancel,
-            bootstyle="danger",# type: ignore
+            bootstyle="danger",  # type: ignore
         ).grid(row=0, column=2, padx=3, pady=5, sticky=EW)
 
         # Botão Aplicar Filtros
@@ -233,7 +233,7 @@ class ClassFilterDialog(tk.Toplevel):
             button_frame,
             text=UI_TEXTS.get("apply_filters_button", "✔️ Aplicar Filtros"),
             command=self._on_apply,
-            bootstyle="success",# type: ignore
+            bootstyle="success",  # type: ignore
         ).grid(row=0, column=3, padx=3, pady=5, sticky=EW)
 
         # --- Configurações Finais da Janela ---
@@ -249,6 +249,11 @@ class ClassFilterDialog(tk.Toplevel):
         """Centraliza o diálogo em relação à janela pai."""
         self.update_idletasks()  # Garante que winfo_width/height retornem valores corretos
         parent = self._parent_app
+
+        if not parent:
+            logger.warning("Tentativa de centralizar o diálogo sem janela pai.")
+            return
+
         # Obtém geometria da janela pai
         parent_x = parent.winfo_x()
         parent_y = parent.winfo_y()

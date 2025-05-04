@@ -16,7 +16,6 @@ from tkinter import messagebox
 from typing import TYPE_CHECKING, Callable, Dict, List, Sequence, Set, Tuple, Union
 
 import ttkbootstrap as ttk
-from ttkbootstrap.constants import *  # Estilos e layout
 
 # Importações locais
 from registro.control.constants import (
@@ -32,7 +31,7 @@ from registro.model.tables import Session as SessionModel  # Modelo DB
 # Type checking para evitar importações circulares
 if TYPE_CHECKING:
     from registro.control.session_manage import SessionManager
-    from registro.view.gui import RegistrationApp
+    from registro.view.registration_app import RegistrationApp
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +138,7 @@ class SessionDialog(tk.Toplevel):
         self._callback = callback
         self._parent_app = parent_app
         # Obtém o SessionManager da aplicação pai
-        self._session_manager: "SessionManager" = parent_app.get_session()
+        self._session_manager: "SessionManager" = parent_app.session_manager
         # Armazena dados dos checkboxes de turma
         self._classes_checkbox_data: List[
             Tuple[str, tk.BooleanVar, ttk.Checkbutton]

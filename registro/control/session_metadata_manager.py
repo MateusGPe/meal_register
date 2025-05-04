@@ -13,7 +13,7 @@ planilhas Google (SpreadSheet).
 import json
 import logging
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, NamedTuple
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,9 +26,26 @@ from registro.control.constants import (DATABASE_URL, SESSION_PATH, UI_TEXTS,
 from registro.control.generic_crud import CRUD
 from registro.control.reserves import reserve_snacks_for_all  # Função auxiliar
 from registro.control.sync_session import SpreadSheet  # Wrapper do gspread
-from registro.control.utils import (load_json,  # Utilitários de arquivo
-                                    save_json)
+from registro.control.utils import load_json  # Utilitários de arquivo
+from registro.control.utils import save_json
 from registro.model.tables import Base, Reserve, Session, Student  # Modelos DB
+
+class SessionMetadata(NamedTuple):
+    """
+    A NamedTuple representing metadata for a session.
+
+    Attributes:
+        session_id (str): The unique identifier for the session.
+        time (str): The time associated with the session.
+        select_group (str): The group selected during the session.
+        date (str): The date of the session.
+        meal_type (str): The type of meal associated with the session.
+    """
+    session_id: int
+    time: str
+    select_group: List[str]
+    date: str
+    meal_type: str
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +96,8 @@ class SessionMetadataManager:
 
         # Atributos para armazenar o estado da sessão ativa
         self._session_id: Optional[int] = None
-        self._hora: Optional[str] = None
-        self._turmas_selecionadas: List[str] = []
+        self._time: Optional[str] = None
+        self._select_group: List[str] = []
         self._date: Optional[str] = None  # Formato YYYY-MM-DD
         self._meal_type: Optional[str] = None  # 'lanche' ou 'almoço'
 
@@ -120,13 +137,13 @@ class SessionMetadataManager:
 
     def get_time(self) -> Optional[str]:
         """ Retorna a hora da sessão ativa (HH:MM). """
-        return self._hora
+        return self._time
 
     def get_session_classes(self) -> List[str]:
         """ Retorna a lista de nomes das turmas selecionadas para a sessão ativa. """
-        return self._turmas_selecionadas or []
+        return self._select_group or []
 
-    def get_session_info(self) -> Optional[Tuple[int, str, str, List[str]]]:
+    def get_session_info(self) -> Optional[SessionMetadata]:
         """
         Retorna as informações completas da sessão ativa.
 
@@ -137,11 +154,12 @@ class SessionMetadataManager:
         if self._session_id is None:
             return None
         # Garante que os valores retornados não sejam None (usa string vazia como fallback)
-        return (
+        return SessionMetadata(
             self._session_id,
+            self._time or "",
+            self._select_group or [],
             self._date or "",
-            self._meal_type or "",
-            self._turmas_selecionadas or []
+            self._meal_type or ""
         )
 
     def load_session(self, session_id: Optional[int] = None) -> Optional[Dict[str, int]]:
@@ -229,8 +247,8 @@ class SessionMetadataManager:
         self._session_id = None
         self._date = None
         self._meal_type = None
-        self._hora = None
-        self._turmas_selecionadas = []
+        self._time = None
+        self._select_group = []
 
     def _update_session_attributes(self, session_obj: Session):
         """
@@ -242,7 +260,7 @@ class SessionMetadataManager:
         self._session_id = session_obj.id  # Garante consistência
         self._meal_type = session_obj.refeicao.lower()  # Armazena em minúsculo
         self._date = session_obj.data  # YYYY-MM-DD
-        self._hora = session_obj.hora  # HH:MM
+        self._time = session_obj.hora  # HH:MM
 
         # Processa o campo 'groups' (JSON string)
         try:
@@ -251,22 +269,22 @@ class SessionMetadataManager:
             # Valida se o resultado é realmente uma lista
             if isinstance(groups_list, list):
                 # Garante que itens são strings
-                self._turmas_selecionadas = [str(item) for item in groups_list]
+                self._select_group = [str(item) for item in groups_list]
             else:
                 logger.warning(
                     "Tipo de dado inesperado para 'groups' na sessão %s. Esperado list,"
                     " recebido %s. Redefinindo para lista vazia.", session_obj.id,
                     type(groups_list))
-                self._turmas_selecionadas = []
+                self._select_group = []
         except json.JSONDecodeError:
             logger.error("Falha ao decodificar JSON 'groups' para sessão %s. Conteúdo: '%s'."
                          " Redefinindo para lista vazia.", session_obj.id, session_obj.groups)
-            self._turmas_selecionadas = []
+            self._select_group = []
         except Exception as e:
             # Captura outros erros inesperados durante o processamento
             logger.exception("Erro inesperado ao processar 'groups' para sessão %s: %s",
                              session_obj.id, e)
-            self._turmas_selecionadas = []
+            self._select_group = []
 
     def save_session_state(self) -> bool:
         """ Salva o ID da sessão ativa atual no arquivo de estado JSON. """
@@ -308,9 +326,9 @@ class SessionMetadataManager:
             updated_session = self.session_crud.update(self._session_id, {"groups": classes_json})
             if updated_session:
                 # Sucesso: atualiza o atributo interno e retorna a lista
-                self._turmas_selecionadas = classes
+                self._select_group = classes
                 logger.info('Turmas atualizadas com sucesso para sessão %s.', self._session_id)
-                return self._turmas_selecionadas
+                return self._select_group
             else:
                 # CRUD.update retornou None (sessão não encontrada? Erro interno?)
                 logger.error(

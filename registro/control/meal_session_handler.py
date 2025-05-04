@@ -24,6 +24,7 @@ from sqlalchemy.orm import aliased
 # Importações locais
 from registro.control.constants import UI_TEXTS
 from registro.control.generic_crud import CRUD
+from registro.control.session_metadata_manager import SessionMetadata
 from registro.control.utils import to_code
 from registro.model.tables import Consumption, Group, Reserve, Student
 
@@ -90,10 +91,7 @@ class MealSessionHandler:
 
     def set_session_info(
         self,
-        session_id: Optional[int],
-        date: Optional[str],
-        meal_type: Optional[str],
-        turmas: Optional[List[str]],
+        session: SessionMetadata
     ):
         """
         Define o contexto da sessão de refeição ativa. Limpa caches internos.
@@ -106,17 +104,17 @@ class MealSessionHandler:
                     Turmas prefixadas com '#' são consideradas "sem reserva obrigatória".
         """
         logger.debug('Definindo informações da sessão: ID=%s, Data=%s, Refeição=%s, Grupos=%s',
-                     session_id, date, meal_type, turmas)
-        self._session_id = session_id
-        self._date = date
+                     session.session_id, session.date, session.meal_type, session.select_group)
+        self._session_id = session.session_id
+        self._date = session.date
         # Armazena o tipo de refeição em minúsculo para consistência interna
-        self._meal_type = meal_type.lower() if meal_type else None
+        self._meal_type = session.meal_type.lower() if session.meal_type else None
 
         # Processa a lista de turmas para separar com/sem reserva
         self._turmas_com_reserva = set()
         self._turmas_sem_reserva = set()
-        if turmas:
-            for t in turmas:
+        if session.select_group:
+            for t in session.select_group:
                 # Limpa espaços e remove 'Vazio' (legado?)
                 t_clean = t.replace("Vazio", "").strip()
                 if not t_clean:
@@ -154,7 +152,7 @@ class MealSessionHandler:
             self._load_served_pronts_from_db()
         return self._served_pronts
 
-    def filter_eligible_students(self) -> Optional[List[Dict[str, Any]]]:
+    def filter_eligible_students(self, not_served: bool = True) -> Optional[List[Dict[str, Any]]]:
         """
         Filtra e retorna a lista de alunos elegíveis para a sessão atual,
         com base na data, tipo de refeição e turmas selecionadas.
@@ -331,7 +329,7 @@ class MealSessionHandler:
                 {**info, "Turma": ",".join(sorted(list(info["Turma"])))}
                 for pront, info in processed_students.items()
                 # Exclui alunos que já foram servidos nesta sessão
-                if pront not in self._served_pronts
+                if pront not in self._served_pronts and not_served
             ]
 
             logger.info('%s alunos elegíveis (e não servidos) filtrados para a sessão %s.',
@@ -708,7 +706,7 @@ class MealSessionHandler:
                     # rowcount pode ser 0 se todos já existiam
                     result_ins = self.db_session.execute(insert_stmt)
                     logger.info('Tentativa de inserção em lote concluída (linhas afetadas/'
-                                'inseridas: %s).',result_ins.rowcount)
+                                'inseridas: %s).', result_ins.rowcount)
 
             # Commita as remoções e adições
             self.db_session.commit()
@@ -729,7 +727,7 @@ class MealSessionHandler:
             self.db_session.rollback()
             self._load_served_pronts_from_db()
 
-    def get_eligible_students(self) -> List[Dict[str, Any]]:
+    def get_eligible_students(self, not_served: bool = True) -> List[Dict[str, Any]]:
         """
         Retorna a lista cacheada de alunos elegíveis.
         Se o cache estiver vazio, dispara `filter_eligible_students` para preenchê-lo.
@@ -741,7 +739,7 @@ class MealSessionHandler:
         if not self._filtered_students_cache:
             logger.debug('Cache de alunos elegíveis vazio. Disparando filtro.')
             # Tenta preencher o cache. filter_eligible_students lida com erros internos.
-            self.filter_eligible_students()
+            self.filter_eligible_students(not_served)
         # Retorna o conteúdo atual do cache (pode ser vazio se filtro falhou ou não encontrou nada)
         return self._filtered_students_cache
 

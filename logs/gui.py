@@ -1847,29 +1847,28 @@ class RegistrationApp(tk.Tk):
                 self._status_panel.clear_table()
             return
 
-        # Extrai detalhes
-        session_id, date_str_backend, meal_type_str, _ = session_details
         meal_display = capitalize(
-            meal_type_str or UI_TEXTS.get("unknown_meal_type", "?")
+            session_details.meal_type or UI_TEXTS.get("unknown_meal_type", "?")
         )
         time_display = self._session_manager.get_time() or "??"
 
         # Formata data para exibição DD/MM/YYYY
         try:
-            #display_date = datetime.strptime(date_str_backend, "%Y-%m-%d").strftime(
+            # display_date = datetime.strptime(date_str_backend, "%Y-%m-%d").strftime(
             #    "%d/%m/%Y"
-            #)
-            display_date = date_str_backend
+            # )
+            display_date = session_details.date
         except (ValueError, TypeError):
             logger.warning(
-                "Não foi possível formatar data %s para exibição.", date_str_backend
+                "Não foi possível formatar data %s para exibição.", session_details.date
             )
-            display_date = date_str_backend
+            display_date = session_details.date
 
         # Atualiza título e label
         title = UI_TEXTS.get(
             "app_title_active_session", "Reg: {meal} - {date} {time} [ID:{id}]"
-        ).format(meal=meal_display, date=display_date, time=time_display, id=session_id)
+        ).format(meal=meal_display, date=display_date,
+                 time=time_display, id=session_details.session_id)
         self.title(title)
         self._session_info_label.config(text=title)
 
@@ -1882,7 +1881,7 @@ class RegistrationApp(tk.Tk):
         self.deiconify()
         self.lift()
         self.focus_force()
-        logger.info("UI configurada para sessão ID: %s", session_id)
+        logger.info("UI configurada para sessão ID: %s", session_details.session_id)
 
     # --- Métodos de Atualização e Comunicação ---
 
@@ -1890,7 +1889,7 @@ class RegistrationApp(tk.Tk):
         """Atualiza os componentes da UI que dependem dos dados da sessão."""
         logger.info("Refrescando UI após mudança nos dados...")
         if not self._session_manager or not self._session_manager.get_session_info():
-            logger.warning("Nenhuma sessão ativa para refrescar a UI.")
+            logger.warning("Nenhuma sessão ativa para atualizar a UI.")
             return
 
         # Filtra elegíveis (aplica filtros de turma atuais)
@@ -1951,7 +1950,7 @@ class RegistrationApp(tk.Tk):
         SessionDialog(
             UI_TEXTS.get("session_dialog_title", "Selecionar ou Criar Sessão"),
             self.handle_session_dialog_result,
-            self,
+            self,  # type: ignore
         )
 
     def _open_class_filter_dialog(self):
@@ -1964,7 +1963,10 @@ class RegistrationApp(tk.Tk):
             )
             return
         logger.info("Abrindo diálogo de filtro de turmas.")
-        ClassFilterDialog(self, self._session_manager, self.on_class_filter_apply)
+        ClassFilterDialog(
+            self,  # type: ignore
+            self._session_manager,
+            self.on_class_filter_apply)
 
     def on_class_filter_apply(self, selected_identifiers: List[str]):
         """Callback do ClassFilterDialog."""
@@ -2137,14 +2139,14 @@ class RegistrationApp(tk.Tk):
                 parent=self,
             )
             return False
-        _, date_str_backend, meal_type_str, _ = session_details
-        time_str = self._session_manager.get_time() or "??"
+
+        time_str = session_details.time or "??"
         meal_display = capitalize(
-            meal_type_str or UI_TEXTS.get("unknown_meal_type", "?")
+            session_details.meal_type or UI_TEXTS.get("unknown_meal_type", "?")
         )
         try:
             file_path = export_to_excel(
-                served_data_records, meal_display, date_str_backend, time_str
+                served_data_records, meal_display, session_details.date, time_str
             )
             if file_path:
                 logger.info("Exportado para: %s", file_path)

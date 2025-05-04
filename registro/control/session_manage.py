@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple, Set
 # Importações locais dos componentes de controle
 from registro.control.generic_crud import CRUD
 from registro.control.meal_session_handler import MealSessionHandler
-from registro.control.session_metadata_manager import SessionMetadataManager
+from registro.control.session_metadata_manager import SessionMetadata, SessionMetadataManager
 from registro.model.tables import Group, Reserve, Session, Student  # Modelos DB
 from registro.control.constants import NewSessionData  # Tipagem
 
@@ -99,7 +99,7 @@ class SessionManager:
         """ Retorna a lista de nomes das turmas selecionadas para a sessão ativa. """
         return self.metadata_manager.get_session_classes()
 
-    def get_session_info(self) -> Optional[Tuple[int, str, str, List[str]]]:
+    def get_session_info(self) -> Optional[SessionMetadata]:
         """ Retorna as informações completas da sessão ativa (id, data, tipo, turmas). """
         return self.metadata_manager.get_session_info()
 
@@ -120,22 +120,23 @@ class SessionManager:
         # Delega o carregamento para o metadata_manager
         session_info_dict = self.metadata_manager.load_session(session_id)
         # Obtém os detalhes completos da sessão recém-carregada (se houver)
-        session_details_tuple = self.metadata_manager.get_session_info()
+        session_details_tuple: Optional[SessionMetadata] = self.metadata_manager.get_session_info()
 
         # Atualiza o contexto do MealSessionHandler com os detalhes carregados
         if session_info_dict and session_details_tuple:
-            logger.info(f"Sessão {session_details_tuple[0]} carregada. Atualizando contexto do MealHandler.")
-            self.meal_handler.set_session_info(*session_details_tuple)
+            logger.info("Sessão %s carregada. Atualizando contexto do MealHandler.",
+                        session_details_tuple.session_id)
+            self.meal_handler.set_session_info(session_details_tuple)
         elif session_info_dict and not session_details_tuple:
             # Caso raro: estado carregado mas detalhes não recuperados do DB?
             logger.error("Estado da sessão carregado, mas falha ao obter detalhes da sessão para MealHandler!")
             # Limpa o contexto do MealHandler
-            self.meal_handler.set_session_info(None, None, None, None)
+            self.meal_handler.set_session_info(SessionMetadata(-1, '', [], '', ''))
         else:
             # Nenhuma sessão carregada
             logger.warning("Nenhuma sessão pôde ser carregada.")
             # Limpa o contexto do MealHandler
-            self.meal_handler.set_session_info(None, None, None, None)
+            self.meal_handler.set_session_info(SessionMetadata(-1, '', [], '', ''))
 
         return session_info_dict  # Retorna o resultado do carregamento
 
@@ -149,7 +150,7 @@ class SessionManager:
         Returns:
             A lista de turmas atualizada se sucesso, None caso contrário.
         """
-        logger.info(f"Tentando definir turmas da sessão para: {classes}")
+        logger.info("Tentando definir turmas da sessão para: %s", classes)
 
         # Delega a atualização para o metadata_manager
         updated_classes = self.metadata_manager.set_session_classes(classes)
@@ -159,11 +160,13 @@ class SessionManager:
         # Se a atualização no DB foi bem-sucedida e temos os detalhes
         if updated_classes is not None and session_details_tuple:
             # Atualiza o contexto do MealHandler
-            self.meal_handler.set_session_info(*session_details_tuple)
+            self.meal_handler.set_session_info(session_details_tuple)
             logger.info("Turmas da sessão atualizadas e contexto do MealHandler refrescado.")
         elif updated_classes is not None and not session_details_tuple:
             # Caso raro: atualizou DB mas não conseguiu ler de volta?
-            logger.error("Turmas da sessão atualizadas no DB, mas falha ao refrescar contexto do MealHandler!")
+            logger.error(
+                "Turmas da sessão atualizadas no DB, mas falha ao"
+                " atualizar contexto do MealHandler!")
             # Retorna None para indicar problema
             return None
         else:
@@ -183,7 +186,7 @@ class SessionManager:
         Returns:
             True se a criação for bem-sucedida, False caso contrário.
         """
-        logger.info(f"Tentando criar nova sessão com dados: {session_data}")
+        logger.info("Tentando criar nova sessão com dados: %s", session_data)
 
         # Delega a criação para o metadata_manager
         success = self.metadata_manager.new_session(session_data)
@@ -193,11 +196,13 @@ class SessionManager:
         # Se a criação foi bem-sucedida e temos os detalhes
         if success and session_details_tuple:
             # Atualiza o contexto do MealHandler
-            self.meal_handler.set_session_info(*session_details_tuple)
-            logger.info(f"Nova sessão {session_details_tuple[0]} criada e contexto do MealHandler definido.")
+            self.meal_handler.set_session_info(session_details_tuple)
+            logger.info("Nova sessão %d criada e contexto do MealHandler definido.",
+                        session_details_tuple.session_id)
         elif success and not session_details_tuple:
             # Caso raro: criou no DB mas não conseguiu ler de volta?
-            logger.error("Nova sessão criada no DB, mas falha ao obter detalhes para atualizar MealHandler!")
+            logger.error("Nova sessão criada no DB, mas falha ao obter detalhes"
+                         " para atualizar MealHandler!")
             # Retorna False porque o estado está inconsistente
             return False
         elif not success:
@@ -243,7 +248,9 @@ class SessionManager:
         Args:
             served_update: Lista de tuplas representando o estado desejado de alunos servidos.
         """
-        logger.debug(f"Iniciando sincronização de estado de consumo com {len(served_update)} registros alvo.")
+        logger.debug(
+            "Iniciando sincronização de estado de consumo com %d registros alvo.",
+            len(served_update))
         # Obtém a sessão ativa atual do metadata_manager
         session_details_tuple = self.metadata_manager.get_session_info()
 
@@ -254,15 +261,17 @@ class SessionManager:
             if current_handler_sid != active_session_id:
                 # Se diferente, força a atualização do contexto do MealHandler
                 logger.warning(
-                    f"Contexto de sessão do MealHandler ({current_handler_sid}) difere da sessão ativa ({active_session_id}). "
-                    f"Forçando atualização antes de sync_consumption_state.")
-                self.meal_handler.set_session_info(*session_details_tuple)
+                    "Contexto de sessão do MealHandler (%s) difere da sessão ativa (%s). "
+                    "Forçando atualização antes de sync_consumption_state.",
+                    current_handler_sid, active_session_id)
+                self.meal_handler.set_session_info(session_details_tuple)
 
             # Delega a sincronização para o MealSessionHandler
             self.meal_handler.sync_consumption_state(served_update)
         else:
             # Não há sessão ativa, não pode sincronizar
-            logger.error("Não é possível sincronizar estado de consumo: Informação da sessão ativa indisponível.")
+            logger.error("Não é possível sincronizar estado de consumo:"
+                         " Informação da sessão ativa indisponível.")
 
     # --- Gerenciamento de Recursos ---
 

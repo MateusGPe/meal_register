@@ -50,8 +50,8 @@ EXTERNAL_KEY_TRANSLATION: Dict[str, str] = {
     'situação': 'status',
     'nome completo': 'nome'
 }
-# Regex para limpar prefixo "IQ0..." de prontuários
-PRONTUARIO_CLEANUP_REGEX: re.Pattern[str] = re.compile(r"^[Ii][Qq]0+")
+# Regex para limpar prefixo "IQ30..." de prontuários
+PRONTUARIO_CLEANUP_REGEX: re.Pattern[str] = re.compile(r"^[Ii][Qq]30+")
 
 # --- Dados Específicos da Aplicação ---
 INTEGRATED_CLASSES: List[str] = [
