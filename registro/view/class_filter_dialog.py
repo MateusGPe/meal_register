@@ -16,8 +16,6 @@ from typing import List, Tuple, Callable, TYPE_CHECKING, Union
 
 import ttkbootstrap as ttk
 
-# from ttkbootstrap.constants import *  # Importa constantes de estilo e layout
-
 # Importações locais
 from registro.control.constants import UI_TEXTS  # Centralização de textos
 

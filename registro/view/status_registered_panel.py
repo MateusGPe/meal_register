@@ -15,14 +15,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import CENTER, PRIMARY, WARNING  # Importa constantes usadas
 
-# Importações locais relativas
 from registro.control.constants import UI_TEXTS
 from registro.control.session_manage import SessionManager
 from registro.view.simple_treeview import SimpleTreeView
 
 # Evita importação circular para type hinting
 if TYPE_CHECKING:
-    from .registration_app import RegistrationApp
+    from registro.view.registration_app import RegistrationApp
 
 logger = logging.getLogger(__name__)
 

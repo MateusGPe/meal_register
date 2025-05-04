@@ -27,8 +27,6 @@ from ttkbootstrap.constants import (  # Importa apenas as constantes usadas aqui
     X,  # Usado em show_progress_bar
 )
 
-# Importações locais relativas
-# '..' para subir para 'control'
 from registro.control.constants import (
     SESSION_PATH,
     UI_TEXTS,
@@ -39,7 +37,6 @@ from registro.control.session_manage import SessionManager
 from registro.control.sync_thread import SpreadsheetThread, SyncReserves
 from registro.control.utils import capitalize
 
-# '.' para importar do mesmo diretório 'view'
 from registro.view.action_search_panel import ActionSearchPanel  # Painel esquerdo
 from registro.view.class_filter_dialog import ClassFilterDialog
 from registro.view.session_dialog import SessionDialog
@@ -188,9 +185,10 @@ class RegistrationApp(tk.Tk):
 
             self.style.configure("Custom.Treeview.Heading",
                                  font=heading_font,
-                                 background='#d5c3d5',
-                                 foreground='white')  # Cabeçalho
-            print(self.style.colors)
+                                 background=self.style.colors.light,
+                                 foreground=self.style.colors.get_foreground('light')
+                                 )  # Cabeçalho
+
             self.style.configure(
                 "TLabelframe.Label", font=label_font
             )
@@ -336,7 +334,7 @@ class RegistrationApp(tk.Tk):
             text=UI_TEXTS.get("status_ready", "Pronto."),
             bootstyle="inverse-light",  # type: ignore
             font=("-size 10"),  # Usa fonte um pouco menor
-            #style="Status.TLabel",  # Aplica estilo customizado
+            # style="Status.TLabel",  # Aplica estilo customizado
         )
         self._status_bar_label.pack(side=LEFT, padx=5, anchor="w")  # Alinha à esquerda
 

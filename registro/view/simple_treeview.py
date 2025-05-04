@@ -9,10 +9,10 @@ Fornece a classe auxiliar SimpleTreeView, um wrapper para ttk.Treeview.
 import logging
 import re
 import tkinter as tk
+from tkinter import ttk
 from functools import partial
 from typing import Any, Dict, List, Optional, Tuple
 
-import tkinter.ttk as ttk
 from ttkbootstrap.constants import END, HORIZONTAL, VERTICAL, W
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class SimpleTreeView:
         master: tk.Widget,
         coldata: List[Dict[str, Any]],
         height: int = 10,
-        bootstyle: str = "info",
+        bootstyle: str = "light",
     ):
         """
         Inicializa a SimpleTreeView.

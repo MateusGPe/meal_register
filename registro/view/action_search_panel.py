@@ -29,17 +29,14 @@ from ttkbootstrap.constants import (
     X,
 )
 
-# Importações locais relativas
-# Usamos '..' para subir um nível para 'control'
 from registro.control.constants import PRONTUARIO_CLEANUP_REGEX, UI_TEXTS
 from registro.control.session_manage import SessionManager
-# Usamos '.' para importar do mesmo diretório 'view'
 from registro.view.simple_treeview import SimpleTreeView
 
 # Evita importação circular para type hinting
 if TYPE_CHECKING:
     # Importa apenas para checagem de tipo, não em tempo de execução
-    from .registration_app import RegistrationApp
+    from registro.view.registration_app import RegistrationApp
 
 logger = logging.getLogger(__name__)
 
