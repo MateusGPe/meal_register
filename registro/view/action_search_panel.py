@@ -405,7 +405,6 @@ class ActionSearchPanel(ttk.Frame):
 
         # Realiza a busca fuzzy
         if search_term in ['todos', '---', '***']:
-            print(f"search_term: {search_term}")
             matches = self._get_eligible_not_served(
                 eligible, served, not_served=search_term != '***')
         else:

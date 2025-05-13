@@ -248,8 +248,8 @@ class RegistrationApp(tk.Tk):
             buttons_frame,
             text=UI_TEXTS.get("export_end_button", "💾 Exportar & Encerrar"),
             command=self.export_and_end_session,
-            bootstyle="secondary-outline",  # Menos proeminente # type: ignore
-            width=20,  # Largura fixa opcional
+            bootstyle="light",  # Menos proeminente # type: ignore
+            #width=20,  # Largura fixa opcional
         ).pack(
             side=RIGHT, padx=(10, 0)
         )  # Último botão à direita
@@ -258,16 +258,16 @@ class RegistrationApp(tk.Tk):
             buttons_frame,
             text=UI_TEXTS.get("sync_served_button", "📤 Sync Servidos"),
             command=self.sync_session_with_spreadsheet,
-            bootstyle="info-outline",  # type: ignore
-            width=15,
+            bootstyle="light",  # type: ignore
+            #width=15,
         ).pack(side=RIGHT, padx=3)
 
         ttk.Button(
             buttons_frame,
             text=UI_TEXTS.get("sync_master_button", "🔄 Sync Cadastros"),
             command=self._sync_master_data,
-            bootstyle="info-outline",  # type: ignore
-            width=18,
+            bootstyle="light",  # type: ignore
+            #width=18,
         ).pack(side=RIGHT, padx=3)
 
         # Separador visual
@@ -279,16 +279,16 @@ class RegistrationApp(tk.Tk):
             buttons_frame,
             text=UI_TEXTS.get("filter_classes_button", "📊 Filtrar Turmas"),
             command=self._open_class_filter_dialog,
-            bootstyle="primary-outline",  # type: ignore
-            width=15,
+            bootstyle="light",  # type: ignore
+            #width=15,
         ).pack(side=RIGHT, padx=3)
 
         ttk.Button(
             buttons_frame,
             text=UI_TEXTS.get("change_session_button", "⚙️ Alterar Sessão"),
             command=self._open_session_dialog,
-            bootstyle="primary-outline",  # type: ignore
-            width=15,
+            bootstyle="light",  # type: ignore
+            #width=15,
         ).pack(
             side=RIGHT, padx=3
         )  # Primeiro botão à direita (após separador)
