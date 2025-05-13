@@ -567,7 +567,7 @@ class RegistrationApp(tk.Tk):
         Atualiza os componentes da UI que dependem dos dados da sessão
         (contadores, lista de elegíveis). Chamado após filtros, deleções, etc.
         """
-        logger.info("Refrescando UI após mudança nos dados da sessão...")
+        logger.info("Atualizando UI após mudança nos dados da sessão...")
         if not self._session_manager or not self._session_manager.get_session_info():
             logger.warning("Nenhuma sessão ativa para atualizar a UI.")
             return
@@ -609,11 +609,11 @@ class RegistrationApp(tk.Tk):
     def handle_consumption_deletion(self, data_for_logic: Tuple[str, str, str, str, str],
                                     iid_to_delete: str):
         """
-        Chamado pelo StatusRegisteredPanel quando o usuário confirma a deleção
-        de um registro. Processa a deleção no backend e atualiza a UI.
+        Chamado pelo StatusRegisteredPanel quando o usuário confirma a exclusão
+        de um registro. Processa a exclusão no backend e atualiza a UI.
         """
         if not self._session_manager:
-            logger.error("Session Manager indisponível para processar deleção.")
+            logger.error("Session Manager indisponível para processar exclusão.")
             # Exibe erro genérico, pois a causa raiz está no SessionManager
             messagebox.showerror(
                 "Erro Interno", "Erro ao acessar o gerenciador de sessão.", parent=self
@@ -623,7 +623,7 @@ class RegistrationApp(tk.Tk):
         pront = data_for_logic[0] if data_for_logic else "N/A"
         nome = data_for_logic[1] if len(data_for_logic) > 1 else "N/A"
         logger.info(
-            "Processando requisição de deleção de consumo para: %s (%s)", pront, nome
+            "Processando requisição de exclusão de consumo para: %s (%s)", pront, nome
         )
 
         # Chama o SessionManager para deletar do banco de dados
@@ -636,7 +636,7 @@ class RegistrationApp(tk.Tk):
                 self._status_panel.remove_row_from_table(iid_to_delete)
             # Força atualização geral da UI (recalcula elegíveis, atualiza busca e contadores)
             self._refresh_ui_after_data_change()
-            logger.info("UI atualizada após deleção de %s.", pront)
+            logger.info("UI atualizada após exclusão de %s.", pront)
         else:
             # Erro já logado por delete_consumption
             logger.error("Falha ao deletar consumo para %s no backend.", pront)
@@ -649,7 +649,7 @@ class RegistrationApp(tk.Tk):
                 ).format(nome=nome, pront=pront),
                 parent=self,
             )
-            # Opcional: Recarregar a tabela para garantir consistência visual se a deleção falhou
+            # Opcional: Recarregar a tabela para garantir consistência visual se a exclusão falhou
             # if self._status_panel:
             #     self._status_panel.load_registered_students()
 

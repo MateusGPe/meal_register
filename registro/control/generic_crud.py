@@ -47,7 +47,8 @@ class CRUD(Generic[MODEL]):
                         se não for possível identificá-la.
         """
         if not isinstance(session, DBSession):
-            raise TypeError("O argumento 'session' deve ser uma Sessão SQLAlchemy (DBSession).")
+            raise TypeError(
+                "O argumento 'session' deve ser uma Sessão SQLAlchemy (DBSession).")
         # Verifica se o modelo é uma classe mapeada (tem __mapper__)
         if not hasattr(model, '__mapper__'):
             raise TypeError(f"O modelo '{model.__name__
@@ -65,7 +66,8 @@ class CRUD(Generic[MODEL]):
                                  " não possui uma chave primária definida.")
             # Assume que a primeira coluna da chave primária é a principal (comum)
             self._primary_key_name = mapper.primary_key[0].name
-            self._primary_key_column = getattr(self._model, self._primary_key_name)
+            self._primary_key_column = getattr(
+                self._model, self._primary_key_name)
             logger.debug("CRUD inicializado para o modelo %s com PK %s",
                          model.__name__, self._primary_key_name)
         except (AttributeError, IndexError, ValueError) as e:
@@ -91,14 +93,16 @@ class CRUD(Generic[MODEL]):
                 # Tenta obter uma representação curta e segura do item
                 info_repr = repr(item_info)
                 if len(info_repr) > 200:
-                    info_repr = info_repr[:197] + '...'  # Trunca representações longas
+                    # Trunca representações longas
+                    info_repr = info_repr[:197] + '...'
                 log_msg += f" (Info: {info_repr})"
             except Exception:
                 log_msg += " (Erro ao obter info do item)"
         log_msg += f": {error}"
 
         # Log detalhado com traceback em DEBUG
-        logger.debug("Traceback do erro de DB durante '%s':", operation, exc_info=True)
+        logger.debug("Traceback do erro de DB durante '%s':",
+                     operation, exc_info=True)
         # Log do erro principal em ERROR
         logger.error(log_msg)
 
@@ -108,7 +112,8 @@ class CRUD(Generic[MODEL]):
             logger.info("Rollback da sessão DB realizado devido ao erro.")
         except Exception as rb_exc:
             # Loga erro adicional se o rollback falhar
-            logger.error("Erro adicional durante o rollback da sessão DB: %s", rb_exc)
+            logger.error(
+                "Erro adicional durante o rollback da sessão DB: %s", rb_exc)
 
     def create(self: Self, data: Dict[str, Any]) -> Optional[MODEL]:
         """
@@ -193,7 +198,8 @@ class CRUD(Generic[MODEL]):
             return result
         except AttributeError as e:
             # Erro específico se um atributo de filtro for inválido
-            logger.error("Atributo de filtro inválido para %s: %s", self._model.__name__, e)
+            logger.error("Atributo de filtro inválido para %s: %s",
+                         self._model.__name__, e)
             return None
         except SQLAlchemyError as e:
             self._handle_db_error("read_filtered_one", e, filters)
@@ -232,7 +238,8 @@ class CRUD(Generic[MODEL]):
                             f"Modelo {self._model.__name__} não possui o atributo "
                             f"'{actual_key}' para filtro '__in'.")
                     # Aplica o filtro 'IN'
-                    stmt = stmt.where(getattr(self._model, actual_key).in_(value))
+                    stmt = stmt.where(
+                        getattr(self._model, actual_key).in_(value))
                 else:
                     # Filtro de igualdade normal
                     if not hasattr(self._model, key):
@@ -254,7 +261,8 @@ class CRUD(Generic[MODEL]):
                 len(results), self._model.__name__, filters, skip, limit)
             return results  # Retorna lista vazia se não houver resultados
         except AttributeError as e:
-            logger.error("Atributo de filtro inválido para %s: %s", self._model.__name__, e)
+            logger.error("Atributo de filtro inválido para %s: %s",
+                         self._model.__name__, e)
             return []
         except SQLAlchemyError as e:
             self._handle_db_error("read_filtered", e, filters)
@@ -365,7 +373,7 @@ class CRUD(Generic[MODEL]):
                             self._model.__name__, item_id)
                 return True
             else:
-                logger.warning("Registro %s PK %s não encontrado para deleção.",
+                logger.warning("Registro %s PK %s não encontrado para exclusão.",
                                self._model.__name__, item_id)
                 return False
         except SQLAlchemyError as e:
@@ -451,7 +459,8 @@ class CRUD(Generic[MODEL]):
                 item_to_update = self._db_session.get(self._model, item_id)
 
                 if item_to_update:
-                    logger.debug("bulk_update: atualizando %s PK %s", self._model.__name__, item_id)
+                    logger.debug("bulk_update: atualizando %s PK %s",
+                                 self._model.__name__, item_id)
                     # Aplica as atualizações contidas no dicionário
                     for key, value in row_update_data.items():
                         if key == pk_name:  # Não tenta atualizar a própria PK
@@ -480,7 +489,8 @@ class CRUD(Generic[MODEL]):
         except (SQLAlchemyError, TypeError, AttributeError) as e:
             # AttributeError pode ocorrer se tentarmos setar um atributo inexistente e a
             # checagem falhar
-            self._handle_db_error("bulk_update", e, f"{len(rows_data)} linhas tentadas")
+            self._handle_db_error(
+                "bulk_update", e, f"{len(rows_data)} linhas tentadas")
             return False
 
     def import_csv(
@@ -506,7 +516,8 @@ class CRUD(Generic[MODEL]):
             inserção no banco de dados.
         """
         csv_path_str = str(csv_file_path)
-        logger.info("Iniciando importação CSV: %s para %s", csv_path_str, self._model.__name__)
+        logger.info("Iniciando importação CSV: %s para %s",
+                    csv_path_str, self._model.__name__)
         try:
             # Carrega o CSV como lista de dicionários
             raw_rows = load_csv_as_dict(csv_path_str)
@@ -519,10 +530,12 @@ class CRUD(Generic[MODEL]):
 
             processed_rows: List[Dict[str, Any]] = []
             # Itera sobre as linhas brutas do CSV
-            for i, raw_row in enumerate(raw_rows, start=1):  # start=1 para logar linha 2 em diante
+            # start=1 para logar linha 2 em diante
+            for i, raw_row in enumerate(raw_rows, start=1):
                 try:
                     # Ajusta as chaves se a função foi fornecida
-                    adjusted_row = adjust_keys_func(raw_row) if adjust_keys_func else raw_row
+                    adjusted_row = adjust_keys_func(
+                        raw_row) if adjust_keys_func else raw_row
                     # Processa a linha usando a função fornecida
                     processed_row = row_processor(adjusted_row)
 
@@ -551,7 +564,8 @@ class CRUD(Generic[MODEL]):
             # Tenta a inserção em lote
             success = self.bulk_create(processed_rows)
             if success:
-                logger.info("Importação CSV '%s' concluída com sucesso.", csv_path_str)
+                logger.info(
+                    "Importação CSV '%s' concluída com sucesso.", csv_path_str)
             else:
                 # Erro já foi logado por bulk_create
                 logger.error(
@@ -560,7 +574,8 @@ class CRUD(Generic[MODEL]):
                     csv_path_str)
             return success
         except Exception as e:
-            logger.exception("Erro inesperado durante importação CSV '%s': %s", csv_path_str, e)
+            logger.exception(
+                "Erro inesperado durante importação CSV '%s': %s", csv_path_str, e)
             return False
 
     def get_session(self: Self) -> DBSession:
@@ -571,7 +586,7 @@ class CRUD(Generic[MODEL]):
         """ Realiza o commit da transação atual na sessão DB. """
         try:
             self._db_session.commit()
-            logger.debug("Sessão DB commitada com sucesso.")
+            logger.debug("Sessão DB: commit realizado com sucesso.")
         except SQLAlchemyError as e:
             # Trata o erro e faz rollback automaticamente
             self._handle_db_error("commit", e)

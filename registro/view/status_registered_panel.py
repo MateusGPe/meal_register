@@ -387,7 +387,7 @@ class StatusRegisteredPanel(ttk.Frame):
         # Se clicou na coluna de ação de uma linha válida
         if iid and col_id == self.ACTION_COLUMN_ID:
             logger.debug("Coluna de ação clicada para a linha iid: %s", iid)
-            # Pede confirmação e inicia processo de deleção
+            # Pede confirmação e inicia processo de exclusão
             self._confirm_and_delete_consumption(iid)
         # Opcional: Selecionar a linha com clique simples em qualquer célula (exceto ação)
         elif iid and self._registered_students_table.view.exists(iid):
@@ -411,7 +411,7 @@ class StatusRegisteredPanel(ttk.Frame):
                 "Tecla Delete/Backspace pressionada para iid selecionado: %s",
                 selected_iid,
             )
-            # Pede confirmação e inicia processo de deleção para a linha selecionada
+            # Pede confirmação e inicia processo de exclusão para a linha selecionada
             self._confirm_and_delete_consumption(selected_iid)
         else:
             logger.debug(
@@ -457,10 +457,10 @@ class StatusRegisteredPanel(ttk.Frame):
 
             # Validação extra (prontuário não pode ser vazio)
             if not pront:
-                raise ValueError("Prontuário vazio na linha selecionada para deleção.")
+                raise ValueError("Prontuário vazio na linha selecionada para exclusão.")
         except (IndexError, ValueError) as e:
             logger.error(
-                "Erro ao extrair ou validar dados da linha %s para deleção: %s. Dados: %s",
+                "Erro ao extrair ou validar dados da linha %s para exclusão: %s. Dados: %s",
                 iid_to_delete,
                 e,
                 row_values_full,
@@ -489,13 +489,13 @@ class StatusRegisteredPanel(ttk.Frame):
             icon=WARNING,  # Constante ttkbootstrap para ícone de aviso
             parent=self._app,  # Mostra sobre a janela principal
         ):
-            # Delegação para a App principal tratar a deleção no backend e UI
+            # Delegação para a App principal tratar a exclusão no backend e UI
             logger.info(
-                "Confirmada deleção de consumo para %s (iid UI: %s). Delegando para App.",
+                "Confirmada exclusão de consumo para %s (iid UI: %s). Delegando para App.",
                 pront,
                 iid_to_delete,
             )
             # Passa os dados lógicos e o IID da UI para a App principal
             self._app.handle_consumption_deletion(data_for_logic, iid_to_delete)
         else:
-            logger.debug("Deleção de %s cancelada pelo usuário.", pront)
+            logger.debug("exclusão de %s cancelada pelo usuário.", pront)

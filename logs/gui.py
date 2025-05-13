@@ -639,7 +639,7 @@ class ActionSearchPanel(ttk.Frame):
 
     def refresh_results(self):
         """Força a re-execução da busca atual."""
-        logger.debug("Refrescando resultados da busca.")
+        logger.debug("Atualizando resultados da busca.")
         self._perform_actual_search()  # Executa a busca imediatamente
 
     def disable_controls(self):
@@ -1442,7 +1442,7 @@ class StatusRegisteredPanel(ttk.Frame):
         # Se clicou na coluna de ação de uma linha válida
         if iid and col_id == self.ACTION_COLUMN_ID:
             logger.debug("Coluna de ação clicada para a linha iid: %s", iid)
-            # Pede confirmação e inicia processo de deleção
+            # Pede confirmação e inicia processo de exclusão
             self._confirm_and_delete_consumption(iid)
 
     def _on_table_delete_key(self, _=None):
@@ -1451,7 +1451,7 @@ class StatusRegisteredPanel(ttk.Frame):
             return
         selected_iid = self._registered_students_table.get_selected_iid()
         if selected_iid:
-            # Pede confirmação e inicia processo de deleção para a linha selecionada
+            # Pede confirmação e inicia processo de exclusão para a linha selecionada
             self._confirm_and_delete_consumption(selected_iid)
 
     def _confirm_and_delete_consumption(self, iid_to_delete: str):
@@ -1483,10 +1483,10 @@ class StatusRegisteredPanel(ttk.Frame):
             data_for_logic = tuple(row_values_full[:5])
             # Validação extra
             if len(data_for_logic) != 5 or not pront:
-                raise ValueError("Dados da linha inválidos para deleção.")
+                raise ValueError("Dados da linha inválidos para exclusão.")
         except (IndexError, ValueError) as e:
             logger.error(
-                "Erro ao extrair dados da linha %s para deleção: %s", iid_to_delete, e
+                "Erro ao extrair dados da linha %s para exclusão: %s", iid_to_delete, e
             )
             messagebox.showerror(
                 UI_TEXTS.get("error_title", "Erro"),
@@ -1507,15 +1507,15 @@ class StatusRegisteredPanel(ttk.Frame):
             icon=WARNING,
             parent=self._app,
         ):
-            # Delegação para a App principal tratar a deleção no backend e UI
+            # Delegação para a App principal tratar a exclusão no backend e UI
             logger.info(
-                "Confirmada deleção de consumo para %s (iid: %s). Delegando para App.",
+                "Confirmada exclusão de consumo para %s (iid: %s). Delegando para App.",
                 pront,
                 iid_to_delete,
             )
             self._app.handle_consumption_deletion(data_for_logic, iid_to_delete)
         else:
-            logger.debug("Deleção de %s cancelada pelo usuário.", pront)
+            logger.debug("exclusão de %s cancelada pelo usuário.", pront)
 
 
 # ----------------------------------------------------------------------------
@@ -1887,7 +1887,7 @@ class RegistrationApp(tk.Tk):
 
     def _refresh_ui_after_data_change(self):
         """Atualiza os componentes da UI que dependem dos dados da sessão."""
-        logger.info("Refrescando UI após mudança nos dados...")
+        logger.info("Atualizando UI após mudança nos dados...")
         if not self._session_manager or not self._session_manager.get_session_info():
             logger.warning("Nenhuma sessão ativa para atualizar a UI.")
             return
@@ -1912,14 +1912,14 @@ class RegistrationApp(tk.Tk):
             self._action_panel.refresh_results()
 
     def handle_consumption_deletion(self, data_for_logic: Tuple, iid_to_delete: str):
-        """Chamado pelo StatusRegisteredPanel para processar deleção."""
+        """Chamado pelo StatusRegisteredPanel para processar exclusão."""
         if not self._session_manager:
-            logger.error("Session Manager indisponível para deleção.")
+            logger.error("Session Manager indisponível para exclusão.")
             return
 
         pront = data_for_logic[0]
         nome = data_for_logic[1]
-        logger.info("Processando deleção de consumo para: %s", pront)
+        logger.info("Processando exclusão de consumo para: %s", pront)
         success = self._session_manager.delete_consumption(data_for_logic)
 
         if success:

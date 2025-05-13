@@ -1,3 +1,5 @@
+.. _api-view:
+
 :py:mod:`registro.control`
 ==========================
 
@@ -12,14 +14,14 @@ Submódulos
    :template: custom-module-template.rst
    :recursive:
 
-   constants
-   excel_exporter
-   generic_crud
-   google_creds
-   meal_session_handler
-   reserves
-   session_manage
-   session_metadata_manager
-   sync_session
-   sync_thread
-   utils
+   registro.control.constants
+   registro.control.excel_exporter
+   registro.control.generic_crud
+   registro.control.google_creds
+   registro.control.meal_session_handler
+   registro.control.reserves
+   registro.control.session_manage
+   registro.control.session_metadata_manager
+   registro.control.sync_session
+   registro.control.sync_thread
+   registro.control.utils

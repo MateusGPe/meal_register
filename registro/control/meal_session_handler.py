@@ -551,29 +551,29 @@ class MealSessionHandler:
             # Tenta recarregar do DB para garantir
             self._load_served_pronts_from_db()
             if pront not in self._served_pronts:
-                logger.warning('Confirmado que %s não está servido no DB. Deleção abortada.', pront)
+                logger.warning('Confirmado que %s não está servido no DB. exclusão abortada.', pront)
                 return False
             else:
                 logger.warning('Inconsistência de cache detectada para %s ao deletar. Prosseguindo'
                                ' com ID do DB.', pront)
 
-        # Obtém o ID do aluno (necessário para a query de deleção)
+        # Obtém o ID do aluno (necessário para a query de exclusão)
         student_id, _ = self._get_or_find_student_details(pront)
 
         # Inconsistência grave: está no cache de servidos mas não acha o aluno no DB
         if student_id is None:
             logger.error('Inconsistência: %s no cache de servidos, mas aluno não encontrado'
-                         ' no DB para deleção.', pront)
+                         ' no DB para exclusão.', pront)
             self._served_pronts.discard(pront)  # Remove do cache para corrigir
             return False
 
         try:
-            # Cria a declaração de deleção direta no banco
+            # Cria a declaração de exclusão direta no banco
             delete_stmt = delete(Consumption).where(
                 Consumption.student_id == student_id,
                 Consumption.session_id == self._session_id,
             )
-            # Executa a deleção
+            # Executa a exclusão
             result = self.db_session.execute(delete_stmt)
             deleted_count = result.rowcount  # Número de linhas afetadas
 
@@ -646,7 +646,7 @@ class MealSessionHandler:
                     .filter(Student.pront.in_(pronts_to_unmark))
                     .scalar_subquery()
                 )
-                # Declaração de deleção usando a subquery
+                # Declaração de exclusão usando a subquery
                 delete_stmt = delete(Consumption).where(
                     Consumption.session_id == self._session_id,
                     Consumption.student_id.in_(student_ids_to_unmark_subquery),

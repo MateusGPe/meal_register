@@ -261,7 +261,7 @@ class ActionSearchPanel(ttk.Frame):
 
     def refresh_results(self):
         """Força a re-execução da busca atual."""
-        logger.debug("Refrescando resultados da busca.")
+        logger.debug("Atualizando resultados da busca.")
         # Cancela qualquer busca pendente antes de forçar uma nova
         if self._search_after_id is not None:
             self.after_cancel(self._search_after_id)

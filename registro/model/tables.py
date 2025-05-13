@@ -124,7 +124,7 @@ class Reserve(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # Chave estrangeira para Student.id
-    # ON DELETE RESTRICT: Impede a deleção de um aluno se ele tiver reservas associadas
+    # ON DELETE RESTRICT: Impede a exclusão de um aluno se ele tiver reservas associadas
     # (pode ser alterado para CASCADE se a regra de negócio permitir)
     student_id: Mapped[int] = mapped_column(
         ForeignKey("students.id", ondelete="RESTRICT"), index=True

@@ -2,7 +2,7 @@
    :parser: myst_parser
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Conteúdo:
 
    api/index

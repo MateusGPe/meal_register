@@ -1,6 +1,0 @@
-﻿registro.model.tables
-=====================
-
-.. currentmodule:: registro.model.tables
-
-.. automodule:: registro.model.tables

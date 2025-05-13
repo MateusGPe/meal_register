@@ -65,8 +65,10 @@ class GrantAccess:
         if self._token_path.exists():
             try:
                 # Carrega as credenciais do arquivo usando os escopos definidos
-                creds = Credentials.from_authorized_user_file(str(self._token_path), SCOPES)
-                logger.info("Token carregado com sucesso de '%s'", self._token_path)
+                creds = Credentials.from_authorized_user_file(
+                    str(self._token_path), SCOPES)
+                logger.info("Token carregado com sucesso de '%s'",
+                            self._token_path)
                 return creds
             except ValueError as ve:
                 logger.warning(
@@ -86,13 +88,15 @@ class GrantAccess:
                 # Tenta remover o arquivo de token potencialmente inválido
                 self._remove_token_file()
         else:
-            logger.debug("Arquivo de token não encontrado em '%s'.", self._token_path)
+            logger.debug(
+                "Arquivo de token não encontrado em '%s'.", self._token_path)
         return None
 
     def _remove_token_file(self) -> None:
         """ Tenta remover o arquivo de token. """
         try:
-            self._token_path.unlink(missing_ok=True)  # Ignora erro se já não existir
+            # Ignora erro se já não existir
+            self._token_path.unlink(missing_ok=True)
             logger.debug("Arquivo de token potencialmente inválido removido: '%s'",
                          self._token_path)
         except OSError as rm_err:
@@ -125,7 +129,8 @@ class GrantAccess:
                 "Erro ao serializar credenciais para JSON antes de salvar em '%s': %s",
                 self._token_path, json_err)
         except Exception as e:
-            logger.exception("Erro inesperado ao salvar token em '%s': %s", self._token_path, e)
+            logger.exception(
+                "Erro inesperado ao salvar token em '%s': %s", self._token_path, e)
 
     def _run_auth_flow(self) -> Optional[Credentials | ExternalCredentials]:
         """
@@ -148,17 +153,20 @@ class GrantAccess:
                 return None
 
             # Configura o fluxo a partir do arquivo de credenciais e escopos
-            flow = InstalledAppFlow.from_client_secrets_file(str(self._credentials_path), SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                str(self._credentials_path), SCOPES)
 
             # Inicia um servidor local temporário para receber o callback do Google
             # port=0 pede ao sistema para escolher uma porta livre
-            logger.info("Iniciando servidor local para autorização. Verifique seu navegador.")
+            logger.info(
+                "Iniciando servidor local para autorização. Verifique seu navegador.")
             creds = flow.run_local_server(port=0)
             logger.info("Fluxo de autorização concluído com sucesso.")
             return creds
         except FileNotFoundError:
             # Caso o arquivo desapareça entre a verificação e o uso
-            logger.error("Arquivo de credenciais desapareceu: '%s'.", self._credentials_path)
+            logger.error("Arquivo de credenciais desapareceu: '%s'.",
+                         self._credentials_path)
         except Exception as e:
             logger.exception("Erro durante o fluxo de autorização: %s", e)
         return None
@@ -182,7 +190,8 @@ class GrantAccess:
 
         if creds and creds.valid:
             # Token carregado e ainda válido
-            logger.info("Usando credenciais válidas carregadas do arquivo de token.")
+            logger.info(
+                "Usando credenciais válidas carregadas do arquivo de token.")
             self._credentials = creds
         elif creds and creds.expired and creds.refresh_token:
             # Token carregado, mas expirado; tenta atualizar usando refresh token
@@ -204,7 +213,8 @@ class GrantAccess:
                     self._credentials = creds
                     self._save_token(creds)
                 else:
-                    logger.error("Falha ao obter novas credenciais após falha na atualização.")
+                    logger.error(
+                        "Falha ao obter novas credenciais após falha na atualização.")
                     self._credentials = None
             except Exception as e:
                 # Outro erro durante a atualização
@@ -234,7 +244,8 @@ class GrantAccess:
                 self._credentials = creds
                 self._save_token(creds)  # Salva as novas credenciais
             else:
-                logger.error("Falha ao obter novas credenciais via fluxo de autorização.")
+                logger.error(
+                    "Falha ao obter novas credenciais via fluxo de autorização.")
                 self._credentials = None
         return self  # Permite encadeamento,
         # ex: GrantAccess().refresh_or_obtain_credentials().get_credentials()
