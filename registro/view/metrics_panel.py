@@ -1,4 +1,3 @@
-# START OF FILE registro/view/metrics_panel.py
 # registro/view/metrics_panel.py
 import tkinter as tk
 from tkinter import ttk
