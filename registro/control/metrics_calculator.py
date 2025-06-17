@@ -1,5 +1,3 @@
-# START OF FILE registro/control/metrics_calculator.py
-# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------------
 # File: registro/control/metrics_calculator.py (Calculador de Métricas)
 # ----------------------------------------------------------------------------
