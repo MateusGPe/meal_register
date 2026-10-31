@@ -233,7 +233,7 @@ class RegistrationApp(tk.Tk):
             self._top_bar,
             text=UI_TEXTS.get("loading_session", "Carregando Sessão..."),
             font="-size 14 -weight bold",  # Fonte maior e negrito
-            bootstyle="inverse-light",  # Destaque sutil # type: ignore
+            bootstyle="@light",  # Destaque sutil # type: ignore
         )
         self._session_info_label.pack(
             side=LEFT, padx=(0, 20), anchor="w"
@@ -296,7 +296,7 @@ class RegistrationApp(tk.Tk):
     def _create_main_panels(self, session_manager: SessionManager):
         """Cria o PanedWindow e instancia os painéis ActionSearchPanel e StatusRegisteredPanel."""
         # PanedWindow permite redimensionar a divisão entre os painéis
-        self._main_paned_window = ttk.PanedWindow(
+        self._main_paned_window = ttk.Panedwindow(
             self, orient=HORIZONTAL, bootstyle="light"  # type: ignore
         )
         self._main_paned_window.grid(
@@ -332,7 +332,7 @@ class RegistrationApp(tk.Tk):
         self._status_bar_label = ttk.Label(
             self._status_bar,
             text=UI_TEXTS.get("status_ready", "Pronto."),
-            bootstyle="inverse-light",  # type: ignore
+            bootstyle="@light",  # type: ignore
             font=("-size 10"),  # Usa fonte um pouco menor
             # style="Status.TLabel",  # Aplica estilo customizado
         )
@@ -477,7 +477,7 @@ class RegistrationApp(tk.Tk):
                     text=UI_TEXTS.get(
                         "error_no_active_session", "Erro: Nenhuma Sessão Ativa"
                     ),
-                    bootstyle="inverse-danger",  # type: ignore
+                    bootstyle="@danger",  # type: ignore
                 )
             # Desabilita painéis
             if self._action_panel:
@@ -518,7 +518,7 @@ class RegistrationApp(tk.Tk):
 
             self.title(title)
             # Reset style
-            self._session_info_label.config(text=title, bootstyle="inverse-light")  # type: ignore
+            self._session_info_label.config(text=title, bootstyle="@light")  # type: ignore
 
         except Exception as e:
             logger.exception("Erro ao formatar detalhes da sessão para UI: %s", e)
@@ -526,7 +526,7 @@ class RegistrationApp(tk.Tk):
             self.title(UI_TEXTS.get("app_title_error", "RU Registro [Erro na Sessão]"))
             if self._session_info_label:
                 self._session_info_label.config(
-                    text="Erro ao carregar detalhes", bootstyle="inverse-danger"
+                    text="Erro ao carregar detalhes", bootstyle="@danger"
                 )  # type: ignore
             # Mantém painéis desabilitados ou limpa-os
             if self._action_panel:

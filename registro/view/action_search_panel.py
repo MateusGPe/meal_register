@@ -201,7 +201,7 @@ class ActionSearchPanel(ttk.Frame):
             preview_frame,
             text=UI_TEXTS.get("select_student_preview", "Selecione um aluno da lista."),
             justify=LEFT,
-            bootstyle="inverse-info",  # type: ignore
+            bootstyle="@info",  # type: ignore
             wraplength=350,  # Quebra linha para nomes/turmas longas
             style="Preview.TLabel"  # Aplica estilo customizado se definido
         )

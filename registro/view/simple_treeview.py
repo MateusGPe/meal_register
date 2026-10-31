@@ -88,7 +88,7 @@ class SimpleTreeView:
             height=height,
             selectmode="browse",  # Permite selecionar apenas uma linha
             style="Custom.Treeview",  # Estilo ttkbootstrap
-            bootstyle=bootstyle,  # type: ignore
+            # bootstyle=bootstyle,  # type: ignore
         )
         self.view.grid(row=0, column=0, sticky="nsew")
 

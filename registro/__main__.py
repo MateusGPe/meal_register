@@ -174,7 +174,7 @@ def ensure_initial_config():
             logger.info(
                 UI_TEXTS.get("log_default_snacks_created", "Arquivo padrão '{filename}' criado."
                              ).format(
-                    filename=snacks_filename
+                    filename=str(snacks_filename)
                 )
             )
         else:
