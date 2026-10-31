@@ -7,8 +7,8 @@
 
    api/index
 
-Indices and tables
-==================
+Índices e tabelas
+=================
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`

@@ -31,14 +31,14 @@ from registro.model.tables import Base, Reserve, Session, Student  # Modelos DB
 
 class SessionMetadata(NamedTuple):
     """
-    A NamedTuple representing metadata for a session.
+    Uma NamedTuple que representa os metadados de uma sessão.
 
     Attributes:
-        session_id (str): The unique identifier for the session.
-        time (str): The time associated with the session.
-        select_group (str): The group selected during the session.
-        date (str): The date of the session.
-        meal_type (str): The type of meal associated with the session.
+        session_id (int): O identificador único da sessão.
+        time (str): O horário associado à sessão.
+        select_group (List[str]): As turmas selecionadas durante a sessão.
+        date (str): A data da sessão.
+        meal_type (str): O tipo de refeição associado à sessão.
     """
     session_id: int
     time: str

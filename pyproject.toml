@@ -1,31 +1,35 @@
-[tool.poetry]
+[project]
 name = "registro"
 version = "0.7.1"
 description = ""
-authors = ["Mateus G. Pereira <mateus.pereira@ifsp.edu.br>"]
 readme = "README.md"
+authors = [
+    { name = "Mateus G. Pereira", email = "mateus.pereira@ifsp.edu.br" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fuzzywuzzy>=0.18.0",
+    "gspread>=6.1.2",
+    "python-levenshtein>=0.27.1",
+    "sqlalchemy>=2.0.40",
+    "ttkbootstrap>=1.10.1",
+    "xlsxwriter>=3.2.2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-gspread = "^6.1.2"
-ttkbootstrap = "^1.10.1"
-xlsxwriter = "^3.2.2"
-fuzzywuzzy = "^0.18.0"
-python-levenshtein = "^0.27.1"
-sqlalchemy = "^2.0.40"
-pytest = "^8.3.5"
-pytest-mock = "^3.14.0"
-
-
-[tool.poetry.group.dev.dependencies]
-sphinx = "^8.2.3"
-sphinx-rtd-theme = "^3.0.2"
-furo = "^2024.8.6"
-sphinx-copybutton = "^0.5.2"
+[project.scripts]
+registrar = "registro.__main__:run_application"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-registrar = "registro.__main__:run_application"
+[dependency-groups]
+dev = [
+    "furo>=2024.8.6",
+    "pylint>=3.0.0",
+    "pytest>=8.3.5",
+    "pytest-mock>=3.14.0",
+    "sphinx>=8.2.3",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-rtd-theme>=3.0.2",
+]

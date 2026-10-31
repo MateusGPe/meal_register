@@ -15,17 +15,14 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+    - name: Instalar uv
+      uses: astral-sh/setup-uv@v5
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+        enable-cache: true
+    - name: Configurar Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    - name: Instalar dependências
+      run: uv sync --python ${{ matrix.python-version }}
+    - name: Analisar o código com pylint
       run: |
-        python -m pip install --upgrade pip
-        curl -sSL https://install.python-poetry.org | python3 -
-        eval $(poetry env activate)
-        poetry install
-        poetry run pip install pylint
-    - name: Analysing the code with pylint
-      run: |
-        poetry run pylint $(git ls-files '*.py') --fail-under 9
+        uv run pylint $(git ls-files '*.py') --fail-under 9

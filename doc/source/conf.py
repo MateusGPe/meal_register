@@ -1,130 +1,128 @@
 # conf.py
 """
-Configuration file for the Sphinx documentation builder.
+Arquivo de configuração para o gerador de documentação Sphinx.
 
-This file contains a variety of settings and options to customize the
-documentation generation process for the "Registro de Refeições" project.
+Este arquivo contém uma variedade de configurações e opções para personalizar o
+processo de geração de documentação para o projeto "Registro de Refeições".
 
-Key Features:
-- Adds the project root directory to `sys.path` for module discovery.
-- Configures Sphinx extensions like autodoc, napoleon, intersphinx, and more.
-- Sets up HTML output with the modern "Furo" theme.
-- Includes options for autodoc, napoleon, intersphinx, and autosummary.
-- Mocks imports for unavailable or large dependencies during the build process.
+Principais Recursos:
+- Adiciona o diretório raiz do projeto ao `sys.path` para descoberta de módulos.
+- Configura extensões do Sphinx como autodoc, napoleon, intersphinx e outras.
+- Configura a saída HTML com o tema moderno "Furo".
+- Inclui opções para autodoc, napoleon, intersphinx e autosummary.
+- Cria mocks de importação para dependências indisponíveis ou pesadas durante o build.
 
-For more details on Sphinx configuration, visit:
+Para mais detalhes sobre a configuração do Sphinx, visite:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
-# -- Path setup --------------------------------------------------------------
+# -- Configuração de Caminho -------------------------------------------------
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
+# Se extensões (ou módulos a serem documentados com autodoc) estiverem em outro
+# diretório, adicione esses diretórios ao sys.path aqui. Se o diretório for relativo
+# à raiz da documentação, use os.path.abspath para torná-lo absoluto.
 #
 import os
 import sys
-# Add the project root directory to the path
-sys.path.insert(0, os.path.abspath('../..'))  # Adjust this if your docs structure differs
-print(sys.path)  # Debugging line to check the sys.path
-# -- Project information -----------------------------------------------------
+# Adiciona o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.abspath('../..'))  # Ajuste se a estrutura de docs diferir
+print(sys.path)  # Linha de depuração para verificar o sys.path
+# -- Informações do Projeto --------------------------------------------------
 
 project = 'Registro de Refeições'  # pylint: disable=invalid-name
 copyright = '2024-2025, Mateus G Pereira'  # pylint: disable=redefined-builtin,invalid-name
 author = 'Mateus G Pereira'  # pylint: disable=invalid-name
 
-# The full version, including alpha/beta/rc tags - you might want to fetch this dynamically
-# from your package, e.g., using importlib.metadata if you set it up in pyproject.toml
-# For now, using a placeholder.
+# A versão completa, incluindo tags alfa/beta/rc - pode ser obtida dinamicamente
+# do seu pacote, ex.: usando importlib.metadata se configurado no pyproject.toml
+# Por enquanto, usando um valor de espaço reservado.
 release = '0.1.0'  # pylint: disable=invalid-name
 version = '0.1'  # pylint: disable=invalid-name
 
-# -- General configuration ---------------------------------------------------
+# -- Configuração Geral ------------------------------------------------------
 
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
+# Adicione aqui os nomes dos módulos de extensão do Sphinx, como strings.
+# Podem ser extensões que acompanham o Sphinx (chamadas 'sphinx.ext.*') ou personalizadas.
 extensions = [
-    'sphinx.ext.autodoc',        # Include documentation from docstrings
-    'sphinx.ext.napoleon',       # Support for Google and NumPy style docstrings
-    'sphinx.ext.intersphinx',    # Link to other projects' documentation
-    'sphinx.ext.viewcode',       # Add links to source code
-    'sphinx.ext.todo',           # Support for todo items
-    'sphinx.ext.autosummary',    # Generate summary tables
-    'sphinx_copybutton',       # Add a "copy" button to code blocks
-    'sphinx.ext.githubpages',    # Helps with GitHub Pages deployment
+    'sphinx.ext.autodoc',        # Inclui documentação a partir de docstrings
+    'sphinx.ext.napoleon',       # Suporte para docstrings no estilo Google e NumPy
+    'sphinx.ext.intersphinx',    # Links para documentação de outros projetos
+    'sphinx.ext.viewcode',       # Adiciona links para o código-fonte
+    'sphinx.ext.todo',           # Suporte para itens a fazer (todo)
+    'sphinx.ext.autosummary',    # Gera tabelas de resumo
+    'sphinx_copybutton',         # Adiciona botão de "copiar" aos blocos de código
+    'sphinx.ext.githubpages',    # Auxilia na publicação no GitHub Pages
 ]
 
-# Add any paths that contain templates here, relative to this directory.
+# Adicione aqui caminhos que contenham modelos, relativos a este diretório.
 templates_path = ['_templates']
 
-# The suffix(es) of source filenames.
-# You can specify multiple suffix as a list of string:
+# Sufixo(s) dos nomes de arquivos-fonte.
+# É possível especificar múltiplos sufixos como uma lista de strings:
 # source_suffix = ['.rst', '.md']
 source_suffix = '.rst'  # pylint: disable=invalid-name
 
-# The root document. (Replaces master_doc in Sphinx 4.0+)
+# Documento raiz. (Substitui master_doc no Sphinx 4.0+)
 root_doc = 'index'  # pylint: disable=invalid-name
 
-# The language for content autogenerated by Sphinx. Refer to documentation
-# for a list of supported languages.
-# This is also used if you do content translation via gettext catalogs.
-# Usually you set "language" from the command line for these cases.
+# Idioma para conteúdo gerado automaticamente pelo Sphinx. Consulte a documentação
+# para obter uma lista de idiomas suportados.
+# Também usado se você fizer tradução de conteúdo via catálogos gettext.
+# Normalmente o idioma é definido via linha de comando para esses casos.
 language = 'pt_BR'  # pylint: disable=invalid-name
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
+# Lista de padrões, relativos ao diretório fonte, que correspondem a arquivos e
+# diretórios a serem ignorados ao buscar arquivos-fonte.
+# Este padrão também afeta html_static_path e html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-# -- Options for HTML output -------------------------------------------------
+# -- Opções para Saída HTML --------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages. See the documentation for
-# a list of builtin themes.
-# Popular options: 'alabaster', 'sphinx_rtd_theme', 'furo'
-html_theme = 'furo'  # pylint: disable=invalid-name # Using the modern Furo theme
+# Tema a ser utilizado para páginas HTML e HTML Help. Consulte a documentação
+# para uma lista de temas integrados.
+# Opções populares: 'alabaster', 'sphinx_rtd_theme', 'furo'
+html_theme = 'furo'  # pylint: disable=invalid-name # Usando o tema moderno Furo
 
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
+# Adicione aqui caminhos que contenham arquivos estáticos personalizados (como folhas de estilo),
+# relativos a este diretório. Eles são copiados após os arquivos estáticos internos,
+# logo um arquivo chamado "default.css" sobrescreverá o "default.css" interno.
 html_static_path = ['_static']
 
-# You can add a logo here if you have one
+# Você pode adicionar um logotipo aqui se tiver um
 # html_logo = "_static/logo.png"
 
-# Theme options are theme-specific and customize the look and feel of a theme
-# further. For a list of options available for each theme, see the
-# documentation.
+# As opções de tema são específicas de cada tema e personalizam sua aparência.
+# Para obter uma lista de opções disponíveis para cada tema, consulte a documentação.
 # html_theme_options = {}
 
-# -- Options for autodoc ----------------------------------------------------
+# -- Opções para autodoc -----------------------------------------------------
 
-# Automatically extract typehints when specified and place them in
-# descriptions of the relevant function/method.
+# Extrai automaticamente typehints quando especificados e os coloca nas
+# descrições da respectiva função/método.
 autodoc_typehints = "description"  # pylint: disable=invalid-name
 
-# Don't show class signature with the class name.
+# Não exibe a assinatura da classe junto com o nome da classe.
 autodoc_class_signature = "separated"  # pylint: disable=invalid-name
 
-# Default options for autodoc directives. Applied to all autodoc directives.
+# Opções padrão para diretivas autodoc. Aplicadas a todas as diretivas autodoc.
 autodoc_default_options = {
-    'members': True,             # Document members (methods, attributes)
-    'member-order': 'bysource',  # Order members as they appear in source
-    'undoc-members': True,       # Document members without docstrings (use with caution)
-    'show-inheritance': True,    # Show base classes
-    # 'private-members': True,   # Uncomment to document private members (_*)
-    # 'special-members': '__init__', # Uncomment to document special members like __init__
+    'members': True,             # Documenta membros (métodos, atributos)
+    'member-order': 'bysource',  # Ordena membros conforme aparecem no código-fonte
+    'undoc-members': True,       # Documenta membros sem docstrings (usar com cautela)
+    'show-inheritance': True,    # Exibe classes base
+    # 'private-members': True,   # Descomente para documentar membros privados (_*)
+    # 'special-members': '__init__', # Descomente para documentar membros especiais como __init__
 }
 
-# Mock imports for modules that might not be available during build
-# Especially GUI libraries, hardware-specific libraries, or large dependencies.
+# Mocks de importação para módulos que podem não estar disponíveis durante o build.
+# Especialmente bibliotecas de GUI, bibliotecas específicas de hardware ou dependências pesadas.
 autodoc_mock_imports = [
     'tkinter',
     'ttkbootstrap',
     'gspread',
-    'google',          # Keep top-level
+    'google',          # Mantém nível superior
     'google.auth',
     'google.oauth2',
-    'google.auth.transport',  # Keep necessary submodules
+    'google.auth.transport',  # Mantém submódulos necessários
     'google.auth.transport.requests',
     'google.auth.exceptions',
     'google.oauth2.credentials',
@@ -134,22 +132,22 @@ autodoc_mock_imports = [
     'xlsxwriter.exceptions',
     'fuzzywuzzy',
     'ctypes',
-    'sqlalchemy',     # Keep top-level
-    'sqlalchemy.orm',  # Keep necessary submodules
+    'sqlalchemy',     # Mantém nível superior
+    'sqlalchemy.orm',  # Mantém submódulos necessários
     'sqlalchemy.exc',
     'sqlalchemy.dialects',
     'sqlalchemy.dialects.sqlite',
-    # Explicitly add the base class if needed, although mocking sqlalchemy.exc should cover it
+    # Adicione explicitamente a classe base se necessário, embora mockar sqlalchemy.exc deva cobrir
     # 'sqlalchemy.exc.SQLAlchemyError',
     # 'sqlalchemy.exc.IntegrityError',
 ]
 
 
-# -- Options for Napoleon ---------------------------------------------------
+# -- Opções para Napoleon ----------------------------------------------------
 
-# Napoleon settings to parse Google style docstrings
+# Configurações do Napoleon para analisar docstrings no estilo Google
 napoleon_google_docstring = True  # pylint: disable=invalid-name
-napoleon_numpy_docstring = False  # pylint: disable=invalid-name # Explicitly disable NumPy style
+napoleon_numpy_docstring = False  # pylint: disable=invalid-name # Desativa explicitamente estilo NumPy
 napoleon_include_init_with_doc = True  # pylint: disable=invalid-name
 napoleon_include_private_with_doc = False  # pylint: disable=invalid-name
 napoleon_include_special_with_doc = True  # pylint: disable=invalid-name
@@ -163,31 +161,31 @@ napoleon_preprocess_types = True  # pylint: disable=invalid-name
 napoleon_type_aliases = None  # pylint: disable=invalid-name
 napoleon_attr_annotations = True  # pylint: disable=invalid-name
 
-# -- Options for intersphinx ------------------------------------------------
+# -- Opções para intersphinx -------------------------------------------------
 
-# Example configuration for intersphinx: refer to the Python standard library.
+# Configuração de exemplo para o intersphinx: referência à biblioteca padrão do Python.
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'sqlalchemy': ('https://docs.sqlalchemy.org/en/20/', None),  # Check version
+    'sqlalchemy': ('https://docs.sqlalchemy.org/en/20/', None),  # Verifica versão
     'ttkbootstrap': ('https://ttkbootstrap.readthedocs.io/en/latest/', None),
-    # Add mappings for other libraries like gspread if available and needed
+    # Adicione mapeamentos para outras bibliotecas como gspread se disponível e necessário
     # 'gspread': ('https://gspread.readthedocs.io/en/latest/', None),
 }
 
-# -- Options for todo -------------------------------------------------------
+# -- Opções para todo --------------------------------------------------------
 
-# If true, `todo` and `todoList` produce output, else they produce nothing.
+# Se True, `todo` e `todoList` produzem saída, caso contrário não produzem nada.
 todo_include_todos = True  # pylint: disable=invalid-name
 
-# -- Options for Autosummary ------------------------------------------------
-# Turn on sphinx.ext.autosummary
+# -- Opções para Autosummary -------------------------------------------------
+# Ativa sphinx.ext.autosummary
 autosummary_generate = True  # pylint: disable=invalid-name
-# Don't document imported members within modules
+# Não documenta membros importados dentro dos módulos
 autosummary_imported_members = False  # pylint: disable=invalid-name
 
-# --- Optional: Copybutton configuration ---
-# Exclude prompts (>>> , ... ) and output C# console prompts
+# --- Opcional: Configuração do Copybutton ---
+# Exclui prompts (>>> , ... ) e saídas de console C#
 copybutton_prompt_text = (  # pylint: disable=invalid-name
-    r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: ")  # Turn on sphinx.ext.autosummary
-# Turn on sphinx.ext.autosummary
+    r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: ")  # Ativa sphinx.ext.autosummary
+# Trata o prompt do copybutton como expressão regular
 copybutton_prompt_is_regexp = True  # pylint: disable=invalid-name

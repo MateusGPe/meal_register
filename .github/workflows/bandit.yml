@@ -1,21 +1,20 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Este workflow utiliza actions que não são certificadas pelo GitHub.
+# Elas são fornecidas por terceiros e regidas por termos de serviço,
+# políticas de privacidade e documentação de suporte separados.
 
-# Bandit is a security linter designed to find common security issues in Python code.
-# This action will run Bandit on your codebase.
-# The results of the scan will be found under the Security tab of your repository.
+# O Bandit é um linter de segurança projetado para encontrar problemas comuns de segurança em código Python.
+# Esta action executará o Bandit na sua base de código.
+# Os resultados da verificação estarão disponíveis na aba Security do seu repositório.
 
-# https://github.com/marketplace/actions/bandit-scan is ISC licensed, by abirismyname
-# https://pypi.org/project/bandit/ is Apache v2.0 licensed, by PyCQA
+# https://github.com/marketplace/actions/bandit-scan possui licença ISC, por abirismyname
+# https://pypi.org/project/bandit/ possui licença Apache v2.0, por PyCQA
 
 name: Bandit
 on:
   push:
     branches: [ "main", "dev" ]
   pull_request:
-    # The branches below must be a subset of the branches above
+    # As branches abaixo devem ser um subconjunto das branches acima
     branches: [ "main" ]
   schedule:
     - cron: '35 11 * * 5'
@@ -23,30 +22,29 @@ on:
 jobs:
   bandit:
     permissions:
-      contents: read # for actions/checkout to fetch code
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+      contents: read # para actions/checkout buscar o código
+      security-events: write # para github/codeql-action/upload-sarif enviar os resultados SARIF
+      actions: read # necessário apenas para repositórios privados por github/codeql-action/upload-sarif para obter o status da Action
 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Bandit Scan
+      - name: Verificação Bandit
         uses: shundor/python-bandit-scan@ab1d87dfccc5a0ffab88be3aaac6ffe35c10d6cd
-        with: # optional arguments
-          # exit with 0, even with results found
-          exit_zero: true # optional, default is DEFAULT
-          # Github token of the repository (automatically created by Github)
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information.
-          # File or directory to run bandit on
-          # path: # optional, default is .
-          # Report only issues of a given severity level or higher. Can be LOW, MEDIUM or HIGH. Default is UNDEFINED (everything)
-          # level: # optional, default is UNDEFINED
-          # Report only issues of a given confidence level or higher. Can be LOW, MEDIUM or HIGH. Default is UNDEFINED (everything)
-          # confidence: # optional, default is UNDEFINED
-          # comma-separated list of paths (glob patterns supported) to exclude from scan (note that these are in addition to the excluded paths provided in the config file) (default: .svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg)
-          # excluded_paths: # optional, default is DEFAULT
-          # comma-separated list of test IDs to skip
-          # skips: # optional, default is DEFAULT
-          # path to a .bandit file that supplies command line arguments
-          # ini_path: # optional, default is DEFAULT
-
+        with: # argumentos opcionais
+          # sair com status 0, mesmo com problemas encontrados
+          exit_zero: true # opcional, padrão é DEFAULT
+          # Token do GitHub do repositório (criado automaticamente pelo GitHub)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Necessário para obter informações do PR.
+          # Arquivo ou diretório para executar o bandit
+          # path: # opcional, padrão é .
+          # Reportar apenas problemas de um determinado nível de severidade ou superior. Pode ser LOW, MEDIUM ou HIGH. Padrão é UNDEFINED (tudo)
+          # level: # opcional, padrão é UNDEFINED
+          # Reportar apenas problemas de um determinado nível de confiança ou superior. Pode ser LOW, MEDIUM ou HIGH. Padrão é UNDEFINED (tudo)
+          # confidence: # opcional, padrão é UNDEFINED
+          # lista separada por vírgulas de caminhos (suporta padrões glob) a ignorar na verificação (além dos caminhos excluídos no arquivo de config) (padrão: .svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg)
+          # excluded_paths: # opcional, padrão é DEFAULT
+          # lista separada por vírgulas de IDs de testes para ignorar
+          # skips: # opcional, padrão é DEFAULT
+          # caminho para um arquivo .bandit que fornece argumentos de linha de comando
+          # ini_path: # opcional, padrão é DEFAULT

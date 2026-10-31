@@ -1,6 +1,6 @@
 ﻿registro.view.class\_filter\_dialog
 ===================================
 
-.. currentmodule:: registro.view.class_filter_dialog
+.. currentmodule:: registro.view
 
-.. automodule:: registro.view.class_filter_dialog
+.. automodule:: class_filter_dialog
